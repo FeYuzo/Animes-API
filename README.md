@@ -19,6 +19,340 @@ Aplicação web estruturada em **Arquitetura de Microsserviços** para exibiçã
 
 ---
 
+## 📋 Documentação Reversa do Sistema & Classificação em Nuvem
+
+Esta seção consolida a **documentação reversa integral** do sistema, gerada a partir da inspeção minuciosa do código-fonte, dos microsserviços e das integrações em nuvem.
+
+### 1. Classificação SaaS / PaaS / IaaS do Projeto
+
+Tabela classificatória com cada peça do sistema final, indicando a camada do modelo de serviço em computação em nuvem e a justificativa técnica:
+
+| Componente / Peça do Sistema | Camada de Serviço | Justificativa Técnica |
+| :--- | :---: | :--- |
+| **Máquina Virtual (Host / Servidor VPS / Portainer VM)** | **IaaS** *(Infrastructure as a Service)* | Fornece os recursos brutos de hardware virtualizado (CPU, memória RAM, interfaces de rede e disco rígido virtual), ficando a cargo do operador o provisionamento do sistema operacional Linux, patches de segurança e runtime de virtualização. |
+| **Containers Docker / Docker Compose / Portainer CaaS** | **PaaS** *(Platform as a Service)* / **CaaS** *(Containers as a Service)* | Fornece a plataforma padronizada e isolada para execução das aplicações e microsserviços, abstraindo configurações do kernel do host e gerenciando ciclo de vida, resolução de DNS interna e pontes de rede (`internal-net`). |
+| **Stripe (Checkout, Billing & Webhooks)** | **SaaS** *(Software as a Service)* | Solução completa de processamento de pagamentos e assinaturas recorrentes hospedada na nuvem da Stripe, consumida como software pronto via chamadas de API HTTPS e disparos de Webhook sem necessidade de manter infraestrutura financeira. |
+| **Serviço de E-mail SMTP (Mailtrap / Brevo)** | **SaaS** *(Software as a Service)* | Plataforma em nuvem gerenciada para envio e entrega de e-mails transacionais (redefinição de senha), consumida via protocolo SMTP padronizado sem demandar servidor local de e-mails (como Postfix/Sendmail). |
+| **API The Movie Database (TMDB)** | **SaaS** *(Software as a Service)* | Serviço externo em nuvem que fornece dados catalogados, sinopses, avaliações e pôsteres de filmes em tempo real via API REST JSON, eliminando a necessidade de coletar e manter uma base própria de dados cinematográficos. |
+| **Banco de Dados Relacional (MariaDB)** | **PaaS** *(DBaaS)* / **PaaS Local** | Plataforma de banco de dados relacional transacional (ACID) que provê persistência de tabelas estruturadas, integridade referencial com chaves estrangeiras e pool de conexões otimizado para as regras de negócio da aplicação. |
+| **Object Storage (MinIO S3-Compatible)** | **PaaS** *(Storage as a Service)* | Plataforma dedicada de armazenamento de objetos binários não estruturados (avatares de perfil), disponibilizando interface compatível com AWS S3, políticas de bucket e streaming proxy, evitando a poluição da base relacional com BLOBs. |
+| **Armazenamento em Memória / Streams (Redis)** | **PaaS** *(In-Memory Data Store as a Service)* | Plataforma de dados em memória de alta performance configurada com durabilidade AOF, utilizada como message/event store com a estrutura Redis Streams para ingestão e consulta ordenada de logs de auditoria. |
+
+---
+
+### 2. Documentação Reversa — Especificação Funcional (Ponto de Vista do Usuário)
+
+> *Visão Funcional: O que o sistema faz na prática para o usuário final e administrador (escrito na perspectiva de quem assumiu a sustentação e evolução desta base de código).*
+
+O sistema é uma aplicação web completa voltada para os entusiastas da filmografia do ator **Tom Hanks**, operando no modelo *Freemium* com recursos colaborativos e área administrativa. A jornada do usuário abrange os seguintes pilares funcionais:
+
+1. **Acesso, Identificação e Sessão (Cadastro, Login e Logout):**
+   - O visitante realiza cadastro fornecendo Nome, E-mail e Senha (com validação mínima de 4 caracteres), além de definir seu papel inicial (`usuario` ou `admin` para fins didáticos da disciplina).
+   - Ao se autenticar com e-mail e senha, o sistema valida a integridade com hash criptográfico `bcrypt` e gera uma credencial de acesso segura (**JWT — JSON Web Token**).
+   - A sessão do usuário fica persistida em cookie `httpOnly` e no cabeçalho HTTP de requisições subsequentes por 7 dias. Ao clicar em *"Sair"*, a sessão é invalidada imediatamente e o evento de encerramento é auditado.
+
+2. **Fluxo de Auto-Recuperação de Acesso ("Esqueci Minha Senha"):**
+   - Caso o usuário esqueça sua senha, ele pode clicar em *"Esqueceu a senha?"* na tela de autenticação e digitar o e-mail da conta.
+   - O sistema gera um token criptográfico pseudoaleatório de alta entropia (32 bytes em formato hexadecimal) com **validade estrita de 30 minutos** e dispara um e-mail transacional formatado via SMTP (Mailtrap em homologação / Brevo em produção) contendo um link exclusivo (`/?reset_token=...`).
+   - Ao acessar o link pelo e-mail, a aplicação confere a validade e o estado do token (não usado e não expirado) e libera a tela de cadastro da nova senha. Uma vez redefinida, o token é marcado como utilizado, prevenindo reuso malicioso.
+
+3. **Catálogo Dinâmico e Filmografia Tom Hanks:**
+   - Ao acessar a tela principal, o usuário visualiza uma galeria em grade com todos os filmes de Tom Hanks obtidos em tempo real da API do The Movie Database (TMDB).
+   - A interface permite filtrar por **"Todos os Filmes"** ou **"Meus Favoritos"**, aplicar busca textual dinâmica em tempo real pelo título do filme e ordenar por Ano de Lançamento (mais recente ou antigo), Avaliação da Crítica (maior ou menor nota) ou Título (A-Z ou Z-A).
+   - Cada card do catálogo exibe o pôster oficial, ano de lançamento, nota média em estrelas, sinopse resumida, ícone interativo de favorito e contador em tempo real dos comentários da comunidade.
+
+4. **Gerenciamento de Favoritos e Isolamento por Conta:**
+   - O usuário pode favoritar ou desfavoritar qualquer título clicando no ícone de estrela.
+   - Cada usuário possui sua própria lista isolada no banco de dados; as preferências de um usuário não interferem nem são visíveis nas listas privadas de outros usuários.
+   - No **Plano Gratuito**, o usuário pode salvar até **5 filmes favoritos**. Ao tentar favoritar o sexto filme, a aplicação intercepta a ação e exibe o modal de upgrade para o Plano Premium.
+
+5. **Interação Social da Comunidade (Comentários):**
+   - Ao clicar no botão de comentários de um filme, é aberto um modal com a sinopse detalhada e a lista cronológica de mensagens postadas pela comunidade.
+   - Usuários autenticados podem postar comentários sobre os filmes. Cada comentário exibe o nome do autor, sua foto de perfil personalizada (avatar) e, se o autor for assinante, a insígnia dourada **`⭐ PREMIUM`**.
+   - **Autorregulação:** O usuário tem direito de apagar os próprios comentários que tiver escrito a qualquer momento.
+
+6. **Moderação de Conteúdo para Administradores:**
+   - Usuários com o papel de Administrador (`admin`) recebem controles estendidos na interface: visualizam o botão de lixeira em **todos** os comentários do sistema, podendo apagar intervenções inadequadas de terceiros de forma sumária (ação de moderação protegida por RBAC).
+
+7. **Perfil de Usuário e Personalização:**
+   - O usuário pode abrir seu modal de perfil clicando no cabeçalho da página. O perfil exibe: nome completo, endereço de e-mail, insígnia de papel (`[Usuário]` ou `[Admin]`), selo de plano (`[⭐ PREMIUM]`), data de criação da conta, biografia e a listagem pessoal dos seus filmes favoritos com quantidade de comentários.
+   - O titular da conta pode editar seu nome e redigir uma biografia de até 500 caracteres, com contador de caracteres em tempo real.
+
+8. **Upload de Foto de Perfil (Avatar com Object Storage):**
+   - O usuário pode enviar uma foto de perfil diretamente do seu computador.
+   - O arquivo passa por verificação de segurança binária (Magic Bytes) contra arquivos maliciosos e limite de 5 MB, sendo armazenado em nuvem no **MinIO (Object Storage S3)**.
+   - A foto atualizada passa a ser exibida na barra de navegação, na página de perfil e ao lado de todos os comentários feitos pelo usuário na comunidade.
+
+9. **Assinatura Recorrente do Plano Premium (Stripe):**
+   - O usuário pode clicar em *"⭐ Seja Premium"* no topo do site para visualizar a proposta de valor por **R$ 9,90/mês**: favoritos ilimitados (fim da trava de 5 filmes), selo dourado VIP em toda a plataforma e suporte com ativação imediata.
+   - Clicando em *"Assinar Premium"*, o sistema cria uma sessão segura de checkout na Stripe e redireciona o usuário para a página de pagamento oficial da Stripe.
+   - Após a liquidação do pagamento (mesmo em modo de teste), a Stripe notifica o backend via Webhook autenticado criptograficamente, a conta do usuário é promovida para `is_premium = true` e o catálogo libera capacidade ilimitada de favoritos instantaneamente.
+   - Se a assinatura for cancelada ou não for renovada na Stripe, o sistema rebaixa a conta de volta para o plano gratuito sem perda dos dados cadastrais.
+
+10. **Trilha de Auditoria e Governança (Exclusiva para Administradores):**
+    - Administradores têm acesso ao histórico cronológico imutável de eventos comportamentais e de segurança armazenados no Redis Streams (`audit:events`), auditando quem fez login/logout, quem favoritou ou desfavoritou filmes, quem comentou, quem executou moderação de terceiros e quais requisições foram bloqueadas por falta de permissão (erros 403 Forbidden).
+
+---
+
+### 3. Documentação Reversa — Arquitetura de Microsserviços ("The Big Picture")
+
+O diagrama abaixo detalha a visão arquitetural completa de todos os microsserviços, componentes de infraestrutura, bancos de dados e integrações de nuvem externas, mapeando portas, protocolos e canais de comunicação:
+
+```mermaid
+flowchart TD
+    subgraph CLIENTE["🌐 Camada de Cliente (Navegador Web)"]
+        Browser["🖥️ Usuário / Navegador Web\n(HTML5, CSS3 Moderno, JavaScript ES Modules)"]
+    end
+
+    subgraph INGRESS["🚪 Ponto de Entrada Público (Host)"]
+        PortaPublica["Ponto de Entrada Host (:8206 -> :3000)\nHTTPS / HTTP"]
+    end
+
+    subgraph DOCKER_NET["🐳 Rede Interna Docker (internal-net / bridge)"]
+        subgraph CATALOG_CONTAINER["📦 Container Catálogo de Filmes (catalog)"]
+            CatalogApp["🚀 Catálogo Web & API Backend\n(Node.js / Express :3000)"]
+            StaticFiles["📁 Frontend Estático (SPA)\n(/frontend/index.html, js, css)"]
+            ProxyPhoto["🖼️ Streaming Proxy de Fotos\n(GET /api/profile/photo/:key)"]
+        end
+
+        subgraph AUTH_CONTAINER["📦 Container Microsserviço de Autenticação (auth-service)"]
+            AuthApp["🔐 Auth Service API\n(Node.js / Express :4000)\nSem porta host exposta"]
+            JWTModule["🔑 Emissor / Validador JWT & Bcrypt"]
+            RBACModule["🛡️ Matriz de Permissões RBAC\n(Padrão A Centralizado)"]
+        end
+
+        subgraph LOG_CONTAINER["📦 Container Microsserviço de Auditoria (log-service)"]
+            LogApp["📜 Log Service API\n(Node.js / Express :5000)\nSem porta host exposta"]
+            StreamEngine["⚡ Motor de Eventos Streams\n(XADD / XRANGE / XREVRANGE)"]
+        end
+
+        subgraph DATA_STORES["💾 Camada de Persistência & Armazenamento"]
+            MariaDB[("🗄️ MariaDB Relacional (:3306)\nusuarios, reset_tokens,\nfavoritos, comentarios")]
+            Redis[("⚡ Redis 7 Alpine (:6379)\nAppend-Only File (AOF)\nStream 'audit:events'")]
+            MinIO[("🪣 MinIO Object Storage (:9000/9001)\nS3 API & Console\nBucket: perfil-usuarios")]
+        end
+    end
+
+    subgraph EXTERNAL_SAAS["☁️ Serviços Externos em Nuvem (SaaS)"]
+        TMDB["🎬 TMDB API (The Movie Database)\nhttps://api.themoviedb.org/3"]
+        Stripe["💳 Stripe Payments & Checkout\nAPI HTTPS + Webhook Server-to-Server"]
+        SMTP["✉️ Servidor SMTP Transacional\nMailtrap (dev) / Brevo (prod)"]
+    end
+
+    %% Conexões do Cliente
+    Browser -->|HTTP/HTTPS :8206| PortaPublica
+    PortaPublica --> CatalogApp
+    CatalogApp -.-> StaticFiles
+
+    %% Comunicação entre Serviços (Rede Interna)
+    CatalogApp -->|HTTP POST /api/auth/*\nValidação RBAC & Tokens| AuthApp
+    CatalogApp -->|HTTP POST /api/logs/events\nGET /api/logs (Admin)| LogApp
+    AuthApp -->|HTTP POST /api/logs/events\nAuditoria login/logout/403| LogApp
+
+    %% Acesso aos Bancos de Dados e Armazenamento
+    CatalogApp -->|MySQL Protocol :3306\nfavoritos, comentarios, usuarios| MariaDB
+    AuthApp -->|MySQL Protocol :3306\nusuarios, reset_tokens| MariaDB
+    LogApp -->|Redis Protocol RESP :6379\nPersistência em Streams| Redis
+    CatalogApp -->|S3 API HTTP :9000\nUpload e streaming de fotos| MinIO
+    ProxyPhoto -->|getObject| MinIO
+
+    %% Integrações Externas (SaaS)
+    CatalogApp -->|HTTPS /api.themoviedb.org\nFilmografia Tom Hanks| TMDB
+    CatalogApp -->|HTTPS /v1/checkout/sessions\nCriação de Checkout| Stripe
+    Stripe -->|POST /api/stripe/webhook\nAssinatura stripe-signature| CatalogApp
+    AuthApp -->|SMTP / TLS :2525 ou :587\nE-mail de Recuperação de Senha| SMTP
+```
+
+#### Detalhamento das Conexões Arquiteturais:
+1. **Catálogo como Ponto Único de Entrada (*Single Public Ingress*):** Apenas o container `catalog` expõe porta para o host externo (`8206:3000`). Os containers `auth-service`, `log-service`, `redis` e `minio` ficam estritamente confinados à rede bridge `internal-net`, sem mapeamento de portas externas.
+2. **Autenticação Desacoplada (`auth-service`):** O Catálogo delega o processamento de login, cadastro, emissão de tokens e checagem de permissões via requisições HTTP internas para `http://auth-service:4000`.
+3. **Auditoria Assíncrona e Resiliente (`log-service`):** Catálogo e Auth-Service emitem eventos comportamentais em segundo plano (*fire-and-forget*) para `http://log-service:5000/api/logs/events`, gravados no stream `audit:events` do Redis. Caso o serviço de log falhe, a requisição do usuário não é interrompida.
+4. **Isolamento de Dados Binários (MinIO):** Imagens binárias são transferidas via S3 SDK diretamente para o bucket `perfil-usuarios` do MinIO. O Catálogo provê um streaming proxy cacheável (`/api/profile/photo/*`), evitando que o navegador precise acessar a porta do MinIO diretamente.
+5. **Integração de Pagamentos em Dois Sentidos (Stripe):** Comunicação síncrona para iniciar a sessão de checkout (`/v1/checkout/sessions`) e comunicação assíncrona orientada a eventos para ativação e cancelamento do plano premium via Webhook criptografado (`POST /api/stripe/webhook`).
+
+---
+
+### 4. Documentação Reversa — Regras de Negócio do Código ("Se X, então Y")
+
+Abaixo estão listadas as regras de negócio efetivamente impostas pelo código-fonte dos microsserviços, agrupadas por domínio:
+
+#### 🔐 4.1. Autenticação, Cadastro e Sessão
+- **RN-01:** *Se* a requisição de cadastro (`POST /api/auth/register`) omitir `nome`, `email` ou `senha`, *então* o servidor rejeita a criação com `HTTP 400 Bad Request` ("Todos os campos são obrigatórios").
+- **RN-02:** *Se* a senha informada no cadastro ou na redefinição possuir comprimento inferior a 4 caracteres, *então* o servidor rejeita a operação com `HTTP 400 Bad Request` ("A senha deve conter no mínimo 4 caracteres").
+- **RN-03:** *Se* o e-mail informado no cadastro já existir na coluna `email` (única) da tabela `usuarios`, *então* a requisição é negada com `HTTP 409 Conflict` ("Este e-mail já está cadastrado").
+- **RN-04:** *Se* o campo `role` enviado no cadastro for diferente de `'admin'`, *então* o sistema atribui compulsoriamente o papel padrão `'usuario'`.
+- **RN-05:** *Se* as credenciais de login (`email` e `senha`) não corresponderem a um registro válido ou o hash `bcrypt.compare` falhar, *então* o servidor retorna `HTTP 401 Unauthorized` ("Credenciais inválidas").
+- **RN-06:** *Se* o login for bem-sucedido, *então* o sistema emite um token JWT com segredo compartilhado, grava um cookie seguro `token` com validade de 7 dias e emite um evento de auditoria `login` no Redis Streams.
+- **RN-07:** *Se* o usuário acionar o logout (`POST /api/auth/logout`), *então* o cookie de sessão é limpo no navegador e um evento `logout` é persistido na auditoria.
+
+#### 🔑 4.2. Recuperação de Senha ("Esqueci Minha Senha")
+- **RN-08:** *Se* o e-mail informado em `forgot-password` existir no banco, *então* o sistema gera um token criptográfico de 32 bytes (`crypto.randomBytes(32)`), registra na tabela `reset_tokens` com validade de exatamente 30 minutos (`expira_em = NOW() + 30 MINUTE`, `usado = FALSE`) e dispara e-mail com link de redefinição via SMTP.
+- **RN-09:** *Se* o e-mail informado em `forgot-password` não existir, *então* o sistema retorna resposta genérica de sucesso sem erro (prevenção contra ataques de enumeração de e-mails de usuários).
+- **RN-10:** *Se* o token informado na redefinição de senha não constar na tabela `reset_tokens`, *então* a operação falha com `HTTP 400 Bad Request` ("Token de recuperação inválido ou inexistente").
+- **RN-11:** *Se* o token de redefinição já tiver o campo `usado == TRUE`, *então* o servidor recusa a tentativa com `HTTP 400 Bad Request` ("Este link de recuperação já foi utilizado").
+- **RN-12:** *Se* o horário da submissão da nova senha for posterior a `expira_em` (`agora > expira_em`), *então* o servidor recusa a requisição com `HTTP 400 Bad Request` ("Este link de recuperação expirou (validade de 30 minutos ultrapassada)").
+- **RN-13:** *Se* o token for válido, não usado e dentro dos 30 minutos, *então* o hash Bcrypt da nova senha é salvo no usuário e o token é marcado atomicamente como `usado = TRUE`.
+
+#### ⭐ 4.3. Favoritos & Regra de Negócio Premium
+- **RN-14:** *Se* um usuário comum (`is_premium == FALSE`) tentar favoritar um filme (`POST /api/favorites`) e sua contagem atual de favoritos for igual ou superior a 5 (`total >= 5`), *então* o sistema bloqueia o cadastro, retorna `HTTP 403 Forbidden` com código `PREMIUM_REQUIRED` e registra o evento `limite_favoritos_atingido` no Redis Streams.
+- **RN-15:** *Se* o usuário for assinante (`is_premium == TRUE`), *então* a limitação de favoritos é ignorada, concedendo capacidade de favoritar filmes de forma ilimitada.
+- **RN-16:** *Se* o usuário tentar favoritar um filme que já se encontra em seus favoritos, *então* o comando `ON DUPLICATE KEY UPDATE` atualiza título e pôster sem gerar erro nem criar registros duplicados.
+- **RN-17:** *Se* um usuário remover um filme dos favoritos (`DELETE /api/favorites/:id`), *então* a remoção é executada estritamente onde `usuario_id = req.user.id` e o evento `desfavoritar_filme` é auditado.
+
+#### 💬 4.4. Comentários e Moderação RBAC
+- **RN-18:** *Se* o texto de um novo comentário (`POST /api/movies/:id/comments`) estiver vazio ou em branco, *então* o servidor retorna `HTTP 400 Bad Request` ("O texto do comentário não pode ser vazio").
+- **RN-19:** *Se* o usuário tentar apagar um comentário (`DELETE /api/comments/:id`) e for o autor legítimo da postagem (`comentario.usuario_id === req.user.id`), *então* a exclusão é autorizada com base na permissão `comentarios:excluir_proprio` e o evento `apagar_comentario` é auditado.
+- **RN-20:** *Se* o usuário tentar apagar um comentário cujo autor seja outro usuário (`comentario.usuario_id !== req.user.id`):
+  - *Se* o usuário autenticado tiver o papel `usuario`, *então* a autorização é negada com `HTTP 403 Forbidden`, o comentário permanece intacto e o evento `permissao_negada` é auditado no Redis.
+  - *Se* o usuário autenticado tiver o papel `admin`, *então* a ação é aprovada sob a permissão `comentarios:excluir_qualquer`, o comentário é excluído e o evento `apagar_comentario_moderacao` é gravado.
+
+#### 👤 4.5. Perfil de Usuário & Defesa contra IDOR
+- **RN-21:** *Se* na rota de atualização de perfil (`PUT /api/profile`) ou upload de foto (`POST /api/profile/photo`) for fornecido um `usuario_id` ou parâmetro de ID diferente do ID do token autenticado (`req.user.id`), *então* o backend rejeita imediatamente com `HTTP 403 Forbidden`, bloqueia a alteração e emite auditoria com o motivo `tentativa_edicao_perfil_terceiro`.
+- **RN-22:** *Se* o campo `nome` na edição de perfil for fornecido com menos de 2 caracteres, *então* o servidor retorna `HTTP 400 Bad Request` ("O nome deve ter no mínimo 2 caracteres").
+- **RN-23:** *Se* a `bio` na edição de perfil ultrapassar o limite de 500 caracteres, *então* o servidor rejeita a requisição com `HTTP 400 Bad Request` ("A bio deve ter no máximo 500 caracteres").
+
+#### 🖼️ 4.6. Upload de Fotos (Avatar) e Validação Magic Bytes
+- **RN-24:** *Se* o arquivo de foto enviado exceder o tamanho de 5 MB (`5 * 1024 * 1024` bytes), *então* o middleware de upload recusa a requisição com `HTTP 400 Bad Request` informando excesso de tamanho.
+- **RN-25:** *Se* os primeiros bytes do arquivo (Magic Bytes) não corresponderem a uma assinatura binária real de JPEG (`FF D8 FF`), PNG (`89 50 4E 47...`), WebP (`RIFF...WEBP`) ou GIF (`47 49 46 38`), *então* o arquivo é sumariamente descartado com `HTTP 400 Bad Request` ("Formato de imagem inválido ou adulterado"), mitigando risco de *MIME spoofing*.
+- **RN-26:** *Se* o upload for válido, *então* o binário é transmitido ao bucket `perfil-usuarios` no MinIO sob chave determinística `avatars/user-<id>-<timestamp>.<ext>`, apenas a chave textual é gravada na coluna `foto_perfil` do MariaDB e o arquivo de avatar anterior do usuário é excluído do MinIO.
+
+#### 💳 4.7. Pagamentos Stripe & Webhooks
+- **RN-27:** *Se* a requisição recebida no endpoint de webhook (`POST /api/stripe/webhook`) não contiver o header `stripe-signature` ou a assinatura criptográfica HMAC não bater com o segredo `STRIPE_WEBHOOK_SECRET`, *então* a requisição é rejeitada com `HTTP 400 Bad Request` ("Webhook Error: assinatura inválida").
+- **RN-28:** *Se* o evento verificado no webhook for `checkout.session.completed` ou `invoice.payment_succeeded`, *então* o usuário é promovido no banco para `is_premium = TRUE`, vinculando `stripe_customer_id` e `stripe_subscription_id`, e o evento `upgrade_premium_confirmado` é auditado.
+- **RN-29:** *Se* o evento recebido for `customer.subscription.deleted`, *então* o status da assinatura é revogado para `is_premium = FALSE` e o evento `cancelamento_premium` é registrado.
+
+#### 📜 4.8. Auditoria e Logs
+- **RN-30:** *Se* um usuário com papel comum (`role: 'usuario'`) tentar consultar os logs de auditoria (`GET /api/logs`), *então* o middleware RBAC bloqueia o acesso com `HTTP 403 Forbidden` e audita a tentativa no stream.
+- **RN-31:** *Se* a consulta aos logs for realizada por um Administrador (`role: 'admin'`), *então* o microsserviço de logs consome o Redis Streams (`audit:events`) e devolve os eventos respeitando ordenação cronológica e limites configurados (`limit` de 1 a 500).
+
+---
+
+### 5. Documentação Reversa — Modelo de Dados
+
+O ecossistema adota um modelo híbrido de persistência poliglota (*Polyglot Persistence*): dados relacionais estruturados no **MariaDB**, fluxo temporal de logs no **Redis Streams**, objetos binários no **MinIO S3** e entidades virtuais enriquecidas da **TMDB**.
+
+#### 5.1. Diagrama Entidade-Relacionamento (ERD)
+
+```mermaid
+erDiagram
+    USUARIOS ||--o{ RESET_TOKENS : "possui (1:N)"
+    USUARIOS ||--o{ FAVORITOS : "salva (1:N)"
+    USUARIOS ||--o{ COMENTARIOS : "publica (1:N)"
+    USUARIOS ||..o{ OBJETOS_MINIO : "armazena avatar (1:1)"
+    USUARIOS ||..o{ STRIPE_SUBSCRIPTIONS : "assina plano (1:1)"
+    USUARIOS ||..o{ EVENTOS_AUDITORIA : "origina (1:N)"
+    TMDB_MOVIES ||--o{ FAVORITOS : "referenciado por (1:N)"
+    TMDB_MOVIES ||--o{ COMENTARIOS : "recebe (1:N)"
+
+    USUARIOS {
+        int id PK "Auto Increment"
+        varchar_100 nome "Nome completo"
+        varchar_150 email UK "E-mail único do usuário"
+        varchar_255 senha_hash "Hash Bcrypt da senha"
+        varchar_20 role "Papel RBAC: 'usuario' ou 'admin'"
+        varchar_500 bio "Biografia pessoal"
+        varchar_255 foto_perfil "Chave do objeto no MinIO (ex: avatars/user-1.png)"
+        boolean is_premium "Status da assinatura (TRUE = Ilimitado)"
+        varchar_255 stripe_customer_id "ID do cliente na Stripe"
+        varchar_255 stripe_subscription_id "ID da assinatura na Stripe"
+        timestamp criado_em "Data de criação da conta"
+    }
+
+    RESET_TOKENS {
+        int id PK "Auto Increment"
+        varchar_255 token UK "Token hexadecimal de 32 bytes (64 chars)"
+        int usuario_id FK "Referência a usuarios(id) ON DELETE CASCADE"
+        timestamp criado_em "Data de emissão"
+        datetime expira_em "Expiração estrita (+30 minutos)"
+        boolean usado "Flag de uso único (TRUE = consumido)"
+    }
+
+    FAVORITOS {
+        int id PK "Auto Increment"
+        int usuario_id FK "Referência a usuarios(id) ON DELETE CASCADE"
+        int tmdb_movie_id "ID único do filme na TMDB"
+        varchar_255 titulo "Título oficial do filme"
+        varchar_255 poster_path "Caminho relativo da imagem TMDB"
+        timestamp criado_em "Data de inclusão nos favoritos"
+    }
+
+    COMENTARIOS {
+        int id PK "Auto Increment"
+        int usuario_id FK "Referência a usuarios(id) ON DELETE CASCADE"
+        int tmdb_movie_id "ID do filme comentado na TMDB"
+        text texto "Conteúdo textual da postagem"
+        timestamp criado_em "Data de postagem"
+    }
+
+    TMDB_MOVIES {
+        int id PK "ID do filme na TMDB (Entidade Externa)"
+        varchar_255 title "Título original/traduzido"
+        text overview "Sinopse do filme"
+        float vote_average "Nota média da crítica"
+        date release_date "Data de lançamento nos cinemas"
+        varchar_255 poster_path "Path da imagem na CDN da TMDB"
+    }
+
+    EVENTOS_AUDITORIA {
+        string id PK "Redis Stream ID: <timestamp_ms>-<seq>"
+        string usuario_id "ID do usuário autenticado ou 'anonimo'"
+        string acao "login, favoritar_filme, permissao_negada, etc."
+        string timestamp "Carimbo ISO 8601 UTC"
+        string ip "Endereço IP de origem da requisição"
+        string detalhes "Metadados contextuais em JSON serializado"
+    }
+
+    OBJETOS_MINIO {
+        string bucket PK "Bucket 'perfil-usuarios'"
+        string object_key PK "avatars/user-<id>-<timestamp>.<ext>"
+        binary buffer "Conteúdo binário da foto validada"
+        string content_type "image/jpeg, image/png, image/webp"
+    }
+
+    STRIPE_SUBSCRIPTIONS {
+        string subscription_id PK "ID da assinatura (sub_...)"
+        string customer_id "ID do cliente (cus_...)"
+        string price_id "ID do preço do produto"
+        string status "active, canceled, incomplete"
+    }
+```
+
+#### 5.2. Dicionário de Dados e Chaves Relacionais
+
+1. **Tabela `usuarios` (MariaDB):**
+   - **Chave Primária:** `id` (`INT AUTO_INCREMENT`).
+   - **Restrição de Unicidade:** `email` (`UNIQUE NOT NULL`).
+   - **Campos de Controle:** `role` (`VARCHAR(20) DEFAULT 'usuario'`), `is_premium` (`BOOLEAN DEFAULT FALSE`).
+   - **Campos de Integração:** `foto_perfil` (referência ao MinIO), `stripe_customer_id` e `stripe_subscription_id` (referências à Stripe).
+
+2. **Tabela `reset_tokens` (MariaDB):**
+   - **Chave Primária:** `id` (`INT AUTO_INCREMENT`).
+   - **Restrição de Unicidade:** `token` (`VARCHAR(255) UNIQUE NOT NULL`).
+   - **Chave Estrangeira:** `usuario_id` apontando para `usuarios(id)` com regra de integridade referencial `ON DELETE CASCADE` (ao excluir o usuário, todos os seus tokens são purgados atomicamente).
+   - **Temporalidade & Estado:** `expira_em` (`DATETIME NOT NULL`) e `usado` (`BOOLEAN DEFAULT FALSE`).
+
+3. **Tabela `favoritos` (MariaDB):**
+   - **Chave Primária:** `id` (`INT AUTO_INCREMENT`).
+   - **Chave Estrangeira:** `usuario_id` apontando para `usuarios(id)` com `ON DELETE CASCADE`.
+   - **Chave Composta Única:** `UNIQUE KEY uq_usuario_filme (usuario_id, tmdb_movie_id)`, impedindo que o mesmo usuário favorite o mesmo filme mais de uma vez e viabilizando o comando `INSERT ... ON DUPLICATE KEY UPDATE`.
+
+4. **Tabela `comentarios` (MariaDB):**
+   - **Chave Primária:** `id` (`INT AUTO_INCREMENT`).
+   - **Chave Estrangeira:** `usuario_id` apontando para `usuarios(id)` com `ON DELETE CASCADE`.
+   - **Índice de Consulta:** Indexação natural por `tmdb_movie_id` para busca veloz de todos os comentários de um filme.
+
+5. **Stream `audit:events` (Redis Streams):**
+   - **Chave Primária Monotônica:** `<timestamp_ms>-<sequencial>` gerada pelo motor do Redis com complexidade $O(1)$ na inserção (`XADD`).
+   - **Campos Estruturados:** `usuario_id`, `acao`, `timestamp`, `ip`, `detalhes`.
+   - **Durabilidade:** Persistido em disco através do mecanismo *Append-Only File* (`redis-server --appendonly yes`).
+
+6. **Bucket `perfil-usuarios` (MinIO Object Storage):**
+   - **Identificador de Objeto:** `avatars/user-<userId>-<timestamp>.<ext>`.
+   - **Metadados Armazenados no Objeto S3:** `Content-Type`, `X-Amz-Meta-UserId`, `X-Amz-Meta-OriginalName`.
+   - **Política de Acesso:** Leitura pública para fotos e entrega otimizada via streaming proxy com headers de cache imutável (`Cache-Control: public, max-age=86400, immutable`).
+
+---
+
 ## 🏛️ Arquitetura de Microsserviços
 
 O sistema é dividido em containers de microsserviços orquestrados via **Docker Compose**, operando em rede isolada:
