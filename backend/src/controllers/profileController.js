@@ -41,20 +41,54 @@ export async function getProfile(req, res) {
 
     const user = users[0];
 
-    // 2. Busca filmes favoritados do usuário (reaproveitando tabela favoritos existente)
-    const [favoritesRows] = await pool.query(
-      `SELECT f.id, f.usuario_id, f.tmdb_movie_id, f.titulo, f.poster_path, f.criado_em,
-              (SELECT COUNT(*) FROM comentarios c WHERE c.tmdb_movie_id = f.tmdb_movie_id) as comments_count
-       FROM favoritos f
-       WHERE f.usuario_id = ?
-       ORDER BY f.criado_em DESC`,
-      [targetUserId]
-    );
+    // 2. Busca animes favoritados do usuário
+    let favoritesRows = [];
+    try {
+      const [favs] = await pool.query(
+        `SELECT f.id, f.usuario_id, f.anime_id, f.titulo, f.poster_url, f.criado_em,
+                (SELECT COUNT(*) FROM comentarios c WHERE c.anime_id = f.anime_id) as comments_count
+         FROM animes_favoritos f
+         WHERE f.usuario_id = ?
+         ORDER BY f.criado_em DESC`,
+        [targetUserId]
+      );
+      favoritesRows = favs;
+    } catch (_) {
+      // Fallback para tabela legada se necessário
+      const [favs] = await pool.query(
+        `SELECT f.id, f.usuario_id, f.tmdb_movie_id as anime_id, f.titulo, f.poster_path as poster_url, f.criado_em,
+                (SELECT COUNT(*) FROM comentarios c WHERE c.tmdb_movie_id = f.tmdb_movie_id) as comments_count
+         FROM favoritos f
+         WHERE f.usuario_id = ?
+         ORDER BY f.criado_em DESC`,
+        [targetUserId]
+      );
+      favoritesRows = favs;
+    }
 
     const formattedFavorites = favoritesRows.map((fav) => ({
       ...fav,
-      poster_url: fav.poster_path ? (fav.poster_path.startsWith('http') ? fav.poster_path : `${IMAGE_BASE_URL}${fav.poster_path}`) : null
+      poster_url: fav.poster_url || fav.poster_path || null
     }));
+
+    // 3. Contagem de animes assistidos e fila de espera
+    let totalAssistidos = 0;
+    let totalIraVer = 0;
+    try {
+      const [watchedCount] = await pool.query(
+        'SELECT COUNT(*) as total FROM animes_assistidos WHERE usuario_id = ?',
+        [targetUserId]
+      );
+      totalAssistidos = watchedCount[0]?.total || 0;
+
+      const [planCount] = await pool.query(
+        'SELECT COUNT(*) as total FROM animes_ira_ver WHERE usuario_id = ?',
+        [targetUserId]
+      );
+      totalIraVer = planCount[0]?.total || 0;
+    } catch (countErr) {
+      console.warn('[Profile] Aviso ao contabilizar listas:', countErr.message);
+    }
 
     // Monta URLs de foto (direta do MinIO e proxy via catálogo)
     const fotoDirectUrl = user.foto_perfil ? getPhotoPublicUrl(user.foto_perfil) : null;
@@ -75,7 +109,9 @@ export async function getProfile(req, res) {
         criado_em: user.criado_em,
         is_owner: req.user ? req.user.id === user.id : false,
         favoritos: formattedFavorites,
-        total_favoritos: formattedFavorites.length
+        total_favoritos: formattedFavorites.length,
+        total_assistidos: totalAssistidos,
+        total_ira_ver: totalIraVer
       }
     });
   } catch (err) {

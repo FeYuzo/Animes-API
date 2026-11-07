@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 
 import { initDatabase, pool } from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
+import animeRoutes from './routes/animeRoutes.js';
 import movieRoutes from './routes/movieRoutes.js';
 import favoriteRoutes from './routes/favoriteRoutes.js';
 import commentRoutes from './routes/commentRoutes.js';
@@ -95,10 +96,10 @@ app.get('/api/health', async (req, res) => {
     logServiceStatus = `error: ${err.message}`;
   }
 
-  const tmdbKeyConfigured = Boolean(process.env.TMDB_API_KEY || process.env.TMDB_TOKEN);
+  const anilistKeyConfigured = Boolean(process.env.ANILIST_CLIENT_ID || process.env.ANILIST_CLIENT_SECRET);
 
   res.json({
-    service: 'catalog-service',
+    service: 'anitrack-backend',
     status: 'ok',
     timestamp: new Date().toISOString(),
     database: dbStatus,
@@ -112,13 +113,15 @@ app.get('/api/health', async (req, res) => {
       status: logServiceStatus,
       details: logServiceDetails
     },
-    tmdb_configured: tmdbKeyConfigured
+    anilist_configured: anilistKeyConfigured,
+    tmdb_configured: anilistKeyConfigured
   });
 });
 
 // Rotas da API
 app.use('/api/auth', authRoutes);
-app.use('/api/movies', movieRoutes);
+app.use('/api/animes', animeRoutes);
+app.use('/api/movies', animeRoutes); // Compatibilidade retroativa
 app.use('/api/movies/:tmdb_movie_id/comments', commentRoutes);
 app.delete('/api/comments/:id', authenticate, deleteComment);
 app.use('/api/favorites', favoriteRoutes);
@@ -136,16 +139,16 @@ app.use((req, res, next) => {
 
 // Middleware de tratamento global de erros
 app.use((err, req, res, next) => {
-  console.error('[Catalog Server Error]', err);
+  console.error('[AniTrack Server Error]', err);
   res.status(err.status || 500).json({
-    error: err.message || 'Erro interno no servidor do catálogo.'
+    error: err.message || 'Erro interno no servidor do AniTrack.'
   });
 });
 
 // Inicialização do servidor e banco de dados
 async function startServer() {
   console.log('==============================================');
-  console.log('🎬 Catálogo de Filmes Tom Hanks - Servidor');
+  console.log('🌸 AniTrack — Plataforma & API SaaS de Gestão de Animes e Simulcast');
   console.log(`🔗 Auth-Service configurado em: ${AUTH_SERVICE_URL}`);
   console.log(`📜 Log-Service configurado em:  ${LOG_SERVICE_URL}`);
   console.log('==============================================');
@@ -157,7 +160,7 @@ async function startServer() {
   await initMinIO();
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Catálogo rodando na porta pública ${PORT}`);
+    console.log(`🚀 AniTrack Backend rodando na porta pública ${PORT}`);
     console.log(`🌐 Ponto de entrada público: http://localhost:${PORT}`);
   });
 }

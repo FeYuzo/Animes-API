@@ -8,6 +8,7 @@ router.use(authenticate);
 
 router.get('/', listFavorites);
 router.post('/', addFavorite);
+router.delete('/:id', removeFavorite);
 router.delete('/:tmdb_movie_id', removeFavorite);
 
 export default router;

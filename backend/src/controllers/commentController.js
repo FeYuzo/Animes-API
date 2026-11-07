@@ -2,34 +2,38 @@ import { pool } from '../config/db.js';
 import { checkUserPermission } from '../services/authService.js';
 import { logAuditEvent } from '../services/auditService.js';
 
+function getClientIp(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || req.ip || 'desconhecido';
+}
+
 /**
- * Lista os comentários de um filme específico.
+ * Lista os comentários de um anime específico.
  * Todos os usuários autenticados (comuns e administradores) podem visualizar
- * os comentários da comunidade com o nome do autor.
- * Rota: GET /api/movies/:tmdb_movie_id/comments
+ * os comentários da comunidade com o nome do autor e selo VIP Pro.
+ * Rota: GET /api/animes/:anime_id/comments ou GET /api/movies/:tmdb_movie_id/comments
  */
 export async function listMovieComments(req, res) {
   try {
-    const userId = req.user.id;
-    const userRole = req.user.role || 'usuario';
-    const movieId = parseInt(req.params.tmdb_movie_id, 10);
+    const userRole = req.user?.role || 'usuario';
+    const rawId = req.params.anime_id || req.params.tmdb_movie_id || req.params.id;
+    const animeId = parseInt(rawId, 10);
 
-    if (isNaN(movieId)) {
-      return res.status(400).json({ error: 'tmdb_movie_id inválido.' });
+    if (isNaN(animeId)) {
+      return res.status(400).json({ error: 'Identificador de anime inválido.' });
     }
 
     const query = `
-      SELECT c.id, c.usuario_id, c.tmdb_movie_id, c.texto, c.criado_em,
+      SELECT c.id, c.usuario_id, COALESCE(c.anime_id, c.tmdb_movie_id) AS anime_id, c.texto, c.criado_em,
              u.nome AS autor_nome,
              u.is_premium AS autor_is_premium,
              u.foto_perfil AS autor_foto,
              IF(? = 'admin', u.email, NULL) AS autor_email
       FROM comentarios c
       LEFT JOIN usuarios u ON c.usuario_id = u.id
-      WHERE c.tmdb_movie_id = ?
+      WHERE c.anime_id = ? OR c.tmdb_movie_id = ?
       ORDER BY c.criado_em DESC
     `;
-    const params = [userRole, movieId];
+    const params = [userRole, animeId, animeId];
 
     const [rows] = await pool.query(query, params);
 
@@ -40,22 +44,24 @@ export async function listMovieComments(req, res) {
     });
   } catch (err) {
     console.error('[Comments] Erro ao listar comentários:', err);
-    return res.status(500).json({ error: 'Erro ao buscar comentários do filme.' });
+    return res.status(500).json({ error: 'Erro ao buscar comentários do anime.' });
   }
 }
 
 /**
- * Adiciona um comentário para um filme específico vinculado ao usuário logado.
- * Rota: POST /api/movies/:tmdb_movie_id/comments
+ * Adiciona um comentário para um anime específico vinculado ao usuário logado.
+ * Rota: POST /api/animes/:anime_id/comments ou POST /api/movies/:tmdb_movie_id/comments
  */
 export async function addComment(req, res) {
   try {
     const userId = req.user.id;
-    const movieId = parseInt(req.params.tmdb_movie_id, 10);
+    const clientIp = getClientIp(req);
+    const rawId = req.params.anime_id || req.params.tmdb_movie_id || req.body.anime_id || req.body.tmdb_movie_id;
+    const animeId = parseInt(rawId, 10);
     const { texto } = req.body;
 
-    if (isNaN(movieId)) {
-      return res.status(400).json({ error: 'tmdb_movie_id inválido.' });
+    if (isNaN(animeId)) {
+      return res.status(400).json({ error: 'Identificador de anime inválido.' });
     }
 
     if (!texto || typeof texto !== 'string' || texto.trim().length === 0) {
@@ -63,24 +69,24 @@ export async function addComment(req, res) {
     }
 
     const [result] = await pool.query(
-      `INSERT INTO comentarios (usuario_id, tmdb_movie_id, texto)
-       VALUES (?, ?, ?)`,
-      [userId, movieId, texto.trim()]
+      `INSERT INTO comentarios (usuario_id, anime_id, tmdb_movie_id, texto)
+       VALUES (?, ?, ?, ?)`,
+      [userId, animeId, animeId, texto.trim()]
     );
 
     const [newCommentRows] = await pool.query(
-      'SELECT id, usuario_id, tmdb_movie_id, texto, criado_em FROM comentarios WHERE id = ?',
+      'SELECT id, usuario_id, anime_id, texto, criado_em FROM comentarios WHERE id = ?',
       [result.insertId]
     );
 
-    // Auditoria: evento 'comentar'
+    // Auditoria comportamental no Redis Streams: 'comentario_postado'
     logAuditEvent({
       usuario_id: userId,
-      acao: 'comentar',
-      ip: req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || req.ip,
+      acao: 'comentario_postado',
+      ip: clientIp,
       detalhes: {
         comentario_id: result.insertId,
-        tmdb_movie_id: movieId
+        anime_id: animeId
       }
     });
 
@@ -105,7 +111,7 @@ export async function deleteComment(req, res) {
   try {
     const userId = req.user.id;
     const commentId = parseInt(req.params.id, 10);
-    const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || req.ip;
+    const clientIp = getClientIp(req);
 
     if (isNaN(commentId)) {
       return res.status(400).json({ error: 'ID do comentário inválido.' });
@@ -113,7 +119,7 @@ export async function deleteComment(req, res) {
 
     // 1. Busca o comentário no banco de dados
     const [rows] = await pool.query(
-      'SELECT id, usuario_id, tmdb_movie_id, texto FROM comentarios WHERE id = ?',
+      'SELECT id, usuario_id, anime_id, tmdb_movie_id, texto FROM comentarios WHERE id = ?',
       [commentId]
     );
 
@@ -122,20 +128,20 @@ export async function deleteComment(req, res) {
     }
 
     const comment = rows[0];
+    const targetAnimeId = comment.anime_id || comment.tmdb_movie_id;
 
     // 2. Se o usuário autenticado for o autor do comentário:
     // Permissão 'comentarios:excluir_proprio' (permitido para usuario e admin)
     if (comment.usuario_id === userId) {
       await pool.query('DELETE FROM comentarios WHERE id = ?', [commentId]);
 
-      // Auditoria: remoção do próprio comentário
       logAuditEvent({
         usuario_id: userId,
         acao: 'apagar_comentario',
         ip: clientIp,
         detalhes: {
           comentario_id: commentId,
-          tmdb_movie_id: comment.tmdb_movie_id,
+          anime_id: targetAnimeId,
           tipo: 'proprio'
         }
       });
@@ -147,12 +153,10 @@ export async function deleteComment(req, res) {
     }
 
     // 3. Se NÃO for o autor, trata-se de tentativa de excluir comentário de outro usuário.
-    // Requer a permissão exclusiva de moderação: 'comentarios:excluir_qualquer'
-    // Consulta centralizada ao auth-service (Padrão A)
+    // Requer permissão exclusiva de moderação: 'comentarios:excluir_qualquer'
     const authCheck = await checkUserPermission(userId, 'comentarios:excluir_qualquer');
 
     if (!authCheck.allowed) {
-      // Auditoria: tentativa negada por permissão (403)
       logAuditEvent({
         usuario_id: userId,
         acao: 'permissao_negada',
@@ -172,10 +176,9 @@ export async function deleteComment(req, res) {
       });
     }
 
-    // 4. Autorizado pelo auth-service (papel admin): executa a exclusão de moderação
+    // 4. Autorizado pelo auth-service (papel admin): executa exclusão administrativa
     await pool.query('DELETE FROM comentarios WHERE id = ?', [commentId]);
 
-    // Auditoria: moderação efetuada com sucesso
     logAuditEvent({
       usuario_id: userId,
       acao: 'apagar_comentario_moderacao',
@@ -183,7 +186,7 @@ export async function deleteComment(req, res) {
       detalhes: {
         comentario_id: commentId,
         autor_comentario_id: comment.usuario_id,
-        tmdb_movie_id: comment.tmdb_movie_id,
+        anime_id: targetAnimeId,
         tipo: 'moderacao_admin'
       }
     });

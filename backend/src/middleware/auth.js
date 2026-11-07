@@ -48,6 +48,40 @@ export function authenticate(req, res, next) {
 }
 
 /**
+ * Middleware de autenticação opcional.
+ * Se o token for fornecido e válido, injeta req.user.
+ * Se não for fornecido, prossegue normalmente como visitante anônimo.
+ */
+export function optionalAuthenticate(req, res, next) {
+  let token = null;
+
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
+
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      nome: decoded.nome,
+      role: decoded.role || 'usuario'
+    };
+  } catch {
+    req.user = null;
+  }
+  next();
+}
+
+/**
  * Middleware para checar se o usuário autenticado possui o papel necessário
  */
 export function requireRole(allowedRoles = []) {

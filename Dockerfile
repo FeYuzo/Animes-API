@@ -1,5 +1,5 @@
 # ==============================================================================
-# Dockerfile para Catálogo de Filmes Tom Hanks
+# Dockerfile para AniTrack API & Backend (Plataforma SaaS de Gestão de Animes)
 # Compatível com Portainer e Docker Compose
 # ==============================================================================
 

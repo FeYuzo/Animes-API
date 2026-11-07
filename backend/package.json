@@ -1,7 +1,7 @@
 {
-  "name": "catalogo-filmes-backend",
+  "name": "anitrack-backend",
   "version": "1.0.0",
-  "description": "Backend API para o Catálogo de Filmes Tom Hanks com MariaDB e TMDB",
+  "description": "Backend API para AniTrack — Plataforma & API SaaS de Gestão de Animes e Simulcast",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
@@ -9,8 +9,10 @@
     "dev": "node --watch src/index.js"
   },
   "keywords": [
-    "tom-hanks",
-    "tmdb",
+    "anitrack",
+    "anilist",
+    "anime",
+    "simulcast",
     "mariadb",
     "express",
     "backend"
