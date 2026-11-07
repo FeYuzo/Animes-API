@@ -1,11 +1,14 @@
 /**
- * Módulo de Autenticação & Tema — AniTrack
- * Gerencia temas Claro/Noturno, sessão do usuário, login, cadastro, papéis (roles) e recuperação de senha.
+ * Módulo de Autenticação & Sessão do Usuário — AniTrack
+ * Gerencia temas Claro/Noturno, sessão ativa, logout e modal de upgrade Otaku Pro.
+ * O login e o cadastro completos ocorrem na página dedicada auth.html.
  */
 
 import { api } from './api.js';
 
-// Elementos da Interface
+// ============================================================================
+// 1. ELEMENTOS DA INTERFACE (INDEX.HTML)
+// ============================================================================
 const authView = document.getElementById('auth-view');
 const appView = document.getElementById('app-view');
 const navViews = document.getElementById('nav-views');
@@ -19,9 +22,7 @@ const navUserAvatar = document.getElementById('nav-user-avatar');
 const navAvatarIcon = document.getElementById('nav-avatar-icon');
 const btnLogout = document.getElementById('btn-logout');
 
-// Modal de Autenticação (Pop-up)
-const authModal = document.getElementById('auth-modal');
-const btnCloseAuthModal = document.getElementById('btn-close-auth-modal');
+// Botões de Acesso para Redirecionamento
 const btnHeaderLogin = document.getElementById('btn-header-login');
 const btnHeaderRegister = document.getElementById('btn-header-register');
 const btnHeroCta = document.getElementById('btn-hero-cta');
@@ -30,53 +31,14 @@ const btnHeroLogin = document.getElementById('btn-hero-login');
 // Tema
 const btnThemeToggle = document.getElementById('btn-theme-toggle');
 
-// Modal Otaku Pro
+// Modal Otaku Pro (Upgrade para usuários logados)
 const premiumModal = document.getElementById('premium-modal');
 const btnClosePremiumModal = document.getElementById('btn-close-premium-modal');
 const btnCancelPremiumModal = document.getElementById('btn-cancel-premium-modal');
 const btnConfirmCheckout = document.getElementById('btn-confirm-checkout');
 
-// Tabs de Auth
-const authNavTabs = document.getElementById('auth-nav-tabs');
-const tabLogin = document.getElementById('tab-login');
-const tabRegister = document.getElementById('tab-register');
-const authAlert = document.getElementById('auth-alert');
-
-// Formulários
-const formLogin = document.getElementById('form-login');
-const formRegister = document.getElementById('form-register');
-const formForgot = document.getElementById('form-forgot');
-const formReset = document.getElementById('form-reset');
-
-// Inputs Login
-const loginEmail = document.getElementById('login-email');
-const loginSenha = document.getElementById('login-senha');
-const btnSubmitLogin = document.getElementById('btn-submit-login');
-const btnForgotPassword = document.getElementById('btn-forgot-password');
-
-// Inputs Registro
-const registerNome = document.getElementById('register-nome');
-const registerEmail = document.getElementById('register-email');
-const registerRole = document.getElementById('register-role');
-const registerSenha = document.getElementById('register-senha');
-const btnSubmitRegister = document.getElementById('btn-submit-register');
-
-// Inputs Esqueci Senha
-const forgotEmail = document.getElementById('forgot-email');
-const btnSubmitForgot = document.getElementById('btn-submit-forgot');
-const btnForgotBack = document.getElementById('btn-forgot-back');
-
-// Inputs Reset
-const resetNovaSenha = document.getElementById('reset-nova-senha');
-const resetConfirmaSenha = document.getElementById('reset-confirma-senha');
-const resetTokenInfo = document.getElementById('reset-token-info');
-const btnSubmitReset = document.getElementById('btn-submit-reset');
-const btnResetBack = document.getElementById('btn-reset-back');
-
-let activeResetToken = null;
-
 // ============================================================================
-// 1. GERENCIAMENTO DE TEMA (CLARO / NOTURNO)
+// 2. GERENCIAMENTO DE TEMA (CLARO / NOTURNO)
 // ============================================================================
 export function initTheme() {
   const savedTheme = localStorage.getItem('anitrack_theme') || 'dark';
@@ -100,81 +62,21 @@ export function applyTheme(theme) {
 }
 
 // ============================================================================
-// 2. ALERTAS DE AUTENTICAÇÃO
-// ============================================================================
-function showAlert(message, type = 'danger') {
-  if (!authAlert) return;
-  authAlert.textContent = message;
-  authAlert.className = `alert alert-${type}`;
-  authAlert.classList.remove('hidden');
-}
-
-function hideAlert() {
-  if (!authAlert) return;
-  authAlert.classList.add('hidden');
-  authAlert.textContent = '';
-}
-
-export function switchTab(tab) {
-  hideAlert();
-
-  formLogin?.classList.add('hidden');
-  formRegister?.classList.add('hidden');
-  formForgot?.classList.add('hidden');
-  formReset?.classList.add('hidden');
-
-  if (tab === 'login') {
-    authNavTabs?.classList.remove('hidden');
-    tabLogin?.classList.add('active');
-    tabRegister?.classList.remove('active');
-    formLogin?.classList.remove('hidden');
-  } else if (tab === 'register') {
-    authNavTabs?.classList.remove('hidden');
-    tabRegister?.classList.add('active');
-    tabLogin?.classList.remove('active');
-    formRegister?.classList.remove('hidden');
-  } else if (tab === 'forgot') {
-    authNavTabs?.classList.add('hidden');
-    formForgot?.classList.remove('hidden');
-  } else if (tab === 'reset') {
-    authNavTabs?.classList.add('hidden');
-    formReset?.classList.remove('hidden');
-  }
-}
-
-export function openAuthModal(tab = 'login') {
-  if (authModal) {
-    authModal.classList.remove('hidden');
-    switchTab(tab);
-    setTimeout(() => {
-      if (tab === 'login') {
-        loginEmail?.focus();
-      } else if (tab === 'register') {
-        registerNome?.focus();
-      }
-    }, 50);
-  }
-}
-
-export function closeAuthModal() {
-  authModal?.classList.add('hidden');
-  hideAlert();
-}
-
-// ============================================================================
 // 3. ATUALIZAÇÃO DA INTERFACE & SESSÃO
 // ============================================================================
+export function redirectToAuth(tab = 'login') {
+  window.location.href = `auth.html?tab=${tab}`;
+}
+
 export function showAuthView() {
   authView?.classList.remove('hidden');
   appView?.classList.add('hidden');
   navViews?.classList.add('hidden');
   userNav?.classList.add('hidden');
   guestNav?.classList.remove('hidden');
-  closeAuthModal();
 }
 
 export function showAppView(user) {
-  closeAuthModal();
   authView?.classList.add('hidden');
   guestNav?.classList.add('hidden');
   appView?.classList.remove('hidden');
@@ -212,116 +114,6 @@ export function updateNavUserAvatar(fotoUrl) {
   }
 }
 
-// ============================================================================
-// 4. HANDLERS DE FORMULÁRIOS
-// ============================================================================
-async function handleLogin(e) {
-  e.preventDefault();
-  hideAlert();
-
-  const email = loginEmail.value.trim();
-  const senha = loginSenha.value;
-
-  btnSubmitLogin.disabled = true;
-  btnSubmitLogin.innerHTML = '<span class="spinner-sm"></span> Acessando...';
-
-  try {
-    const res = await api.login(email, senha);
-    formLogin.reset();
-    showAppView(res.user);
-    window.dispatchEvent(new CustomEvent('auth:login', { detail: res.user }));
-  } catch (err) {
-    showAlert(err.message || 'Credenciais inválidas. Verifique seu e-mail e senha.');
-  } finally {
-    btnSubmitLogin.disabled = false;
-    btnSubmitLogin.innerHTML = '<span>Acessar Plataforma</span>';
-  }
-}
-
-async function handleRegister(e) {
-  e.preventDefault();
-  hideAlert();
-
-  const nome = registerNome.value.trim();
-  const email = registerEmail.value.trim();
-  const role = registerRole.value || 'usuario';
-  const senha = registerSenha.value;
-
-  if (senha.length < 4) {
-    showAlert('A senha deve ter no mínimo 4 caracteres.');
-    return;
-  }
-
-  btnSubmitRegister.disabled = true;
-  btnSubmitRegister.innerHTML = '<span class="spinner-sm"></span> Criando conta...';
-
-  try {
-    const res = await api.register(nome, email, senha, role);
-    formRegister.reset();
-    showAppView(res.user);
-    window.dispatchEvent(new CustomEvent('auth:login', { detail: res.user }));
-  } catch (err) {
-    showAlert(err.message || 'Erro ao realizar cadastro.');
-  } finally {
-    btnSubmitRegister.disabled = false;
-    btnSubmitRegister.innerHTML = '<span>Criar Conta Gratuita</span>';
-  }
-}
-
-async function handleForgot(e) {
-  e.preventDefault();
-  hideAlert();
-
-  const email = forgotEmail.value.trim();
-  btnSubmitForgot.disabled = true;
-  btnSubmitForgot.innerHTML = '<span class="spinner-sm"></span> Enviando link...';
-
-  try {
-    const res = await api.forgotPassword(email);
-    formForgot.reset();
-    showAlert(res.message || 'Se o e-mail estiver cadastrado, o link de recuperação foi enviado com validade de 30 minutos.', 'success');
-  } catch (err) {
-    showAlert(err.message || 'Erro ao processar solicitação de recuperação.');
-  } finally {
-    btnSubmitForgot.disabled = false;
-    btnSubmitForgot.innerHTML = '<span>Enviar Link de Recuperação</span>';
-  }
-}
-
-async function handleReset(e) {
-  e.preventDefault();
-  hideAlert();
-
-  const novaSenha = resetNovaSenha.value;
-  const confirmaSenha = resetConfirmaSenha.value;
-
-  if (!novaSenha || novaSenha.length < 4) {
-    showAlert('A nova senha deve ter no mínimo 4 caracteres.');
-    return;
-  }
-
-  if (novaSenha !== confirmaSenha) {
-    showAlert('As senhas não coincidem. Digite a mesma senha em ambos os campos.');
-    return;
-  }
-
-  btnSubmitReset.disabled = true;
-  btnSubmitReset.innerHTML = '<span class="spinner-sm"></span> Atualizando...';
-
-  try {
-    const res = await api.resetPassword(activeResetToken, novaSenha);
-    formReset.reset();
-    activeResetToken = null;
-    switchTab('login');
-    showAlert(res.message || 'Senha alterada com sucesso! Faça login com a nova senha.', 'success');
-  } catch (err) {
-    showAlert(err.message || 'Erro ao redefinir senha. O link pode ter expirado (limite de 30 minutos).');
-  } finally {
-    btnSubmitReset.disabled = false;
-    btnSubmitReset.innerHTML = '<span>Salvar Nova Senha</span>';
-  }
-}
-
 async function handleLogout() {
   await api.logout();
   showAuthView();
@@ -329,7 +121,7 @@ async function handleLogout() {
 }
 
 // ============================================================================
-// 5. MODAL OTAKU PRO & CHECKOUT SEGURO
+// 4. MODAL OTAKU PRO & CHECKOUT
 // ============================================================================
 export function openPremiumModal() {
   premiumModal?.classList.remove('hidden');
@@ -359,38 +151,44 @@ async function startStripeCheckout() {
 }
 
 // ============================================================================
-// 6. EVENT LISTENERS
+// 5. EVENT LISTENERS
 // ============================================================================
-// Modal de Autenticação (Entrar / Criar Conta)
-btnHeaderLogin?.addEventListener('click', () => openAuthModal('login'));
-btnHeaderRegister?.addEventListener('click', () => openAuthModal('register'));
-btnHeroCta?.addEventListener('click', () => openAuthModal('register'));
-btnHeroLogin?.addEventListener('click', () => openAuthModal('login'));
+// Redirecionamento para a página dedicada auth.html
+btnHeaderLogin?.addEventListener('click', (e) => {
+  e.preventDefault();
+  redirectToAuth('login');
+});
+
+btnHeaderRegister?.addEventListener('click', (e) => {
+  e.preventDefault();
+  redirectToAuth('register');
+});
+
+btnHeroCta?.addEventListener('click', (e) => {
+  e.preventDefault();
+  redirectToAuth('register');
+});
+
+btnHeroLogin?.addEventListener('click', (e) => {
+  e.preventDefault();
+  redirectToAuth('login');
+});
 
 document.querySelectorAll('.btn-open-login').forEach((btn) => {
-  btn.addEventListener('click', () => openAuthModal('login'));
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    redirectToAuth('login');
+  });
 });
 
 document.querySelectorAll('.btn-open-register').forEach((btn) => {
-  btn.addEventListener('click', () => openAuthModal('register'));
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    redirectToAuth('register');
+  });
 });
 
-btnCloseAuthModal?.addEventListener('click', closeAuthModal);
-authModal?.addEventListener('click', (e) => {
-  if (e.target === authModal) closeAuthModal();
-});
-
-tabLogin?.addEventListener('click', () => switchTab('login'));
-tabRegister?.addEventListener('click', () => switchTab('register'));
-btnForgotPassword?.addEventListener('click', () => switchTab('forgot'));
-btnForgotBack?.addEventListener('click', () => switchTab('login'));
-btnResetBack?.addEventListener('click', () => switchTab('login'));
-
-formLogin?.addEventListener('submit', handleLogin);
-formRegister?.addEventListener('submit', handleRegister);
-formForgot?.addEventListener('submit', handleForgot);
-formReset?.addEventListener('submit', handleReset);
-
+// Logout & Modal Otaku Pro
 btnLogout?.addEventListener('click', handleLogout);
 btnNavPremium?.addEventListener('click', openPremiumModal);
 btnConfirmCheckout?.addEventListener('click', startStripeCheckout);
@@ -403,7 +201,6 @@ premiumModal?.addEventListener('click', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    if (authModal && !authModal.classList.contains('hidden')) closeAuthModal();
     if (premiumModal && !premiumModal.classList.contains('hidden')) closePremiumModal();
   }
 });
@@ -413,7 +210,7 @@ window.addEventListener('auth:unauthorized', () => {
 });
 
 // ============================================================================
-// 7. INICIALIZAÇÃO
+// 6. INICIALIZAÇÃO
 // ============================================================================
 export async function initAuth() {
   initTheme();
@@ -435,28 +232,12 @@ export async function initAuth() {
     }
   }
 
-  // 2. Checa token de redefinição de senha
+  // 2. Se o usuário acessou a landing page com um link de redefinição de senha,
+  // encaminha diretamente para a página de autenticação com o token.
   const resetToken = urlParams.get('reset_token');
   if (resetToken) {
-    window.history.replaceState({}, document.title, window.location.pathname);
-    showAuthView();
-    openAuthModal('reset');
-    showAlert('Verificando link de recuperação...', 'info');
-
-    try {
-      const check = await api.verifyResetToken(resetToken);
-      activeResetToken = resetToken;
-      switchTab('reset');
-      if (resetTokenInfo) {
-        resetTokenInfo.textContent = `Redefinindo senha da conta: ${check.email || ''}`;
-      }
-      hideAlert();
-      return;
-    } catch (err) {
-      switchTab('login');
-      showAlert(err.message || 'Link de recuperação inválido ou expirado (limite de 30 minutos).', 'danger');
-      return;
-    }
+    window.location.href = `auth.html?reset_token=${encodeURIComponent(resetToken)}`;
+    return;
   }
 
   // 3. Checa sessão ativa

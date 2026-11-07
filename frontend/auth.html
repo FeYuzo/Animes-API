@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AniTrack — Entrar ou Criar Conta</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/styles.css?v=4.1.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%236366f1%22 stroke-width=%222.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22></circle><polygon points=%2210 8 16 12 10 16 10 8%22 fill=%22%236366f1%22></polygon></svg>">
+</head>
+<body class="auth-page-body">
+
+  <!-- Background Image with Blur & Subtle Vignette Overlay -->
+  <div class="auth-bg-layer" aria-hidden="true"></div>
+  <div class="auth-bg-overlay" aria-hidden="true"></div>
+
+  <!-- Central Authentication Container -->
+  <main class="auth-standalone-container">
+    <div class="auth-standalone-card">
+      
+      <!-- Top Bar: Logo & Theme Switcher -->
+      <div class="auth-card-topbar">
+        <a href="index.html" class="brand" title="Voltar para a página inicial">
+          <div class="brand-icon-wrapper">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="10 8 16 12 10 16 10 8" fill="currentColor"></polygon>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <span class="brand-title">AniTrack</span>
+            <span class="brand-subtitle">Simulcast & Anime Hub</span>
+          </div>
+        </a>
+
+        <!-- Theme Toggle Button -->
+        <button id="btn-theme-toggle" class="btn-theme-toggle" type="button" title="Alternar tema">
+          <svg class="theme-icon-sun hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <span id="theme-toggle-label" class="theme-toggle-label">Claro</span>
+        </button>
+      </div>
+
+      <!-- Header Intro -->
+      <div class="auth-card-intro">
+        <h1 id="auth-main-title" class="auth-main-title">Acesse sua Conta</h1>
+        <p id="auth-main-desc" class="auth-main-desc">Entre para gerenciar seus animes e acompanhar as transmissões da temporada.</p>
+      </div>
+
+      <!-- Auth Navigation Tabs -->
+      <div id="auth-nav-tabs" class="auth-tabs">
+        <button id="tab-login" class="tab-btn active" data-tab="login" type="button">Entrar</button>
+        <button id="tab-register" class="tab-btn" data-tab="register" type="button">Criar Conta</button>
+      </div>
+
+      <!-- Alert Box -->
+      <div id="auth-alert" class="alert hidden" role="alert"></div>
+
+      <!-- Form: Login -->
+      <form id="form-login" class="auth-form">
+        <div class="form-group">
+          <label for="login-email">E-mail</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+            </span>
+            <input type="email" id="login-email" class="form-control" placeholder="seu.email@exemplo.com" required autocomplete="email" autofocus>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="label-with-action">
+            <label for="login-senha">Senha</label>
+            <button type="button" id="btn-forgot-password" class="btn-link text-xs" title="Recuperar acesso">Esqueceu a senha?</button>
+          </div>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            </span>
+            <input type="password" id="login-senha" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+        </div>
+
+        <button type="submit" id="btn-submit-login" class="btn btn-primary btn-block">
+          <span>Entrar na Plataforma</span>
+        </button>
+      </form>
+
+      <!-- Form: Registro / Criar Conta -->
+      <form id="form-register" class="auth-form hidden">
+        <div class="form-group">
+          <label for="register-nome">Nome Completo</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </span>
+            <input type="text" id="register-nome" class="form-control" placeholder="Ex: Lucas Kuro" required autocomplete="name">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="register-email">E-mail</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+            </span>
+            <input type="email" id="register-email" class="form-control" placeholder="seu.email@exemplo.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="register-role">Papel de Acesso</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </span>
+            <select id="register-role" class="form-control">
+              <option value="usuario" selected>Usuário (Padrão)</option>
+              <option value="admin">Administrador (Moderação)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="register-senha">Senha</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            </span>
+            <input type="password" id="register-senha" class="form-control" placeholder="Mínimo 4 caracteres" required autocomplete="new-password">
+          </div>
+        </div>
+
+        <button type="submit" id="btn-submit-register" class="btn btn-primary btn-block">
+          <span>Criar Minha Conta</span>
+        </button>
+      </form>
+
+      <!-- Form: Esqueci Minha Senha -->
+      <form id="form-forgot" class="auth-form hidden">
+        <div class="auth-form-header">
+          <h4 class="auth-sub-title">Recuperação de Acesso</h4>
+          <p class="auth-sub-desc">
+            Informe seu e-mail cadastrado. Um link de redefinição com validade de <strong>30 minutos</strong> será enviado.
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label for="forgot-email">E-mail Cadastrado</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+            </span>
+            <input type="email" id="forgot-email" class="form-control" placeholder="seu.email@exemplo.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <button type="submit" id="btn-submit-forgot" class="btn btn-primary btn-block">
+          <span>Enviar Link de Recuperação</span>
+        </button>
+
+        <div class="form-helper-center">
+          <button type="button" id="btn-forgot-back" class="btn-link">← Voltar para o Login</button>
+        </div>
+      </form>
+
+      <!-- Form: Redefinir Senha -->
+      <form id="form-reset" class="auth-form hidden">
+        <div class="auth-form-header">
+          <h4 class="auth-sub-title">Redefinição de Senha</h4>
+          <p id="reset-token-info" class="auth-sub-desc">Digite sua nova senha de acesso.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="reset-nova-senha">Nova Senha</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            </span>
+            <input type="password" id="reset-nova-senha" class="form-control" placeholder="Mínimo 4 caracteres" required autocomplete="new-password">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reset-confirma-senha">Confirmar Nova Senha</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </span>
+            <input type="password" id="reset-confirma-senha" class="form-control" placeholder="Repita a nova senha" required autocomplete="new-password">
+          </div>
+        </div>
+
+        <button type="submit" id="btn-submit-reset" class="btn btn-primary btn-block">
+          <span>Salvar Nova Senha</span>
+        </button>
+
+        <div class="form-helper-center">
+          <button type="button" id="btn-reset-back" class="btn-link">← Voltar para o Login</button>
+        </div>
+      </form>
+
+      <!-- Card Footer: Link de retorno à Landing Page -->
+      <div class="auth-card-footer">
+        <a href="index.html" class="auth-back-home-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>Voltar para a página inicial</span>
+        </a>
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module" src="js/auth-page.js?v=4.1.0"></script>
+</body>
+</html>

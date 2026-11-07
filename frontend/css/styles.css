@@ -1074,6 +1074,144 @@ button, input, select, textarea {
 }
 
 /* --------------------------------------------------------------------------
+   DEDICATED AUTH PAGE (ENTRAR / CRIAR CONTA COM BACKGROUND BORRADO)
+   -------------------------------------------------------------------------- */
+.auth-page-body {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow-x: hidden;
+  background-color: #0b0f19;
+}
+
+.auth-bg-layer {
+  position: fixed;
+  top: -25px;
+  left: -25px;
+  right: -25px;
+  bottom: -25px;
+  background-image: url('../assets/auth-bg.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  filter: blur(8px) brightness(0.65) saturate(1.15);
+  -webkit-filter: blur(8px) brightness(0.65) saturate(1.15);
+  transform: scale(1.06);
+  z-index: 0;
+  pointer-events: none;
+}
+
+[data-theme="light"] .auth-bg-layer {
+  filter: blur(8px) brightness(0.85) saturate(1.1);
+  -webkit-filter: blur(8px) brightness(0.85) saturate(1.1);
+}
+
+.auth-bg-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(11, 15, 25, 0.45) 0%, rgba(11, 15, 25, 0.88) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+[data-theme="light"] .auth-bg-overlay {
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.3) 0%, rgba(15, 23, 42, 0.72) 100%);
+}
+
+.auth-standalone-container {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 480px;
+  padding: 2.5rem 1.25rem;
+  margin: auto;
+}
+
+.auth-standalone-card {
+  background: rgba(17, 23, 38, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 45px rgba(99, 102, 241, 0.18);
+  padding: 2.25rem 2rem;
+  animation: cardFadeIn 0.35s ease-out;
+}
+
+[data-theme="light"] .auth-standalone-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.auth-card-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.auth-card-intro {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.auth-main-title {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+  margin-bottom: 0.35rem;
+}
+
+.auth-main-desc {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.auth-card-footer {
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.auth-back-home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.auth-back-home-link:hover {
+  color: var(--accent-primary);
+  transform: translateX(-2px);
+}
+
+/* --------------------------------------------------------------------------
    AUTH MODAL & FORMS
    -------------------------------------------------------------------------- */
 .auth-modal-card {
