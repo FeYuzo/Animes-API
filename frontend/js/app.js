@@ -1,43 +1,95 @@
 /**
- * Módulo Principal da Aplicação (Catálogo, Favoritos e Comentários)
+ * Módulo Principal da Aplicação — AniTrack
+ * Gerencia catálogo de animes, simulcast sazonal, listas (assistidos, irá ver, favoritos), comentários e perfil.
  */
 
 import { api } from './api.js';
 import { initAuth, updateNavUserAvatar, openPremiumModal } from './auth.js';
 
-// Elementos da Interface
-const moviesGrid = document.getElementById('movies-grid');
-const loadingState = document.getElementById('loading-state');
-const emptyState = document.getElementById('empty-state');
-const emptyTitle = document.getElementById('empty-title');
-const emptyDesc = document.getElementById('empty-desc');
-const catalogAlert = document.getElementById('catalog-alert');
+// ============================================================================
+// ELEMENTOS DO DOM
+// ============================================================================
+const appView = document.getElementById('app-view');
+const brandLogo = document.getElementById('brand-logo');
 
-const filterAllBtn = document.getElementById('filter-all');
-const filterFavBtn = document.getElementById('filter-favorites');
-const badgeAllCount = document.getElementById('badge-all-count');
-const badgeFavCount = document.getElementById('badge-fav-count');
+// Navegação de Views
+const navBtnExplore = document.getElementById('nav-btn-explore');
+const navBtnSimulcast = document.getElementById('nav-btn-simulcast');
+const navBtnWatched = document.getElementById('nav-btn-watched');
+const navBtnPlantowatch = document.getElementById('nav-btn-plantowatch');
+const navBtnFavorites = document.getElementById('nav-btn-favorites');
 
+const navCountWatched = document.getElementById('nav-count-watched');
+const navCountPlantowatch = document.getElementById('nav-count-plantowatch');
+const navCountFavorites = document.getElementById('nav-count-favorites');
+const navBadgeSimulcastToday = document.getElementById('nav-badge-simulcast-today');
+
+// Cabeçalho do Catálogo & Controles
+const currentViewBadge = document.getElementById('current-view-badge');
+const capacityBadge = document.getElementById('capacity-badge');
+const catalogHeading = document.getElementById('catalog-heading');
+const catalogSubheading = document.getElementById('catalog-subheading');
 const inputSearch = document.getElementById('input-search');
 const btnClearSearch = document.getElementById('btn-clear-search');
 const selectSort = document.getElementById('select-sort');
+const simulcastDaysBar = document.getElementById('simulcast-days-bar');
+const dayCountHoje = document.getElementById('day-count-hoje');
 
-// Modal de Comentários
-const commentsModal = document.getElementById('comments-modal');
-const modalPoster = document.getElementById('modal-poster');
-const modalTitle = document.getElementById('modal-title');
-const modalYear = document.getElementById('modal-year');
-const modalCommentsCount = document.getElementById('modal-comments-count');
+// Estados
+const loadingState = document.getElementById('loading-state');
+const loadingText = document.getElementById('loading-text');
+const emptyState = document.getElementById('empty-state');
+const emptyTitle = document.getElementById('empty-title');
+const emptyDesc = document.getElementById('empty-desc');
+const btnEmptyReset = document.getElementById('btn-empty-reset');
+const catalogAlert = document.getElementById('catalog-alert');
+const animesGrid = document.getElementById('animes-grid');
+
+// Modal de Detalhes do Anime
+const animeModal = document.getElementById('anime-modal');
+const btnCloseAnimeModal = document.getElementById('btn-close-anime-modal');
+const modalBannerImg = document.getElementById('modal-banner-img');
+const modalPosterImg = document.getElementById('modal-poster-img');
+const modalFormatBadge = document.getElementById('modal-format-badge');
+const modalStatusBadge = document.getElementById('modal-status-badge');
+const modalScoreBadge = document.getElementById('modal-score-badge');
+const modalAnimeTitle = document.getElementById('modal-anime-title');
+const modalAnimeSubtitle = document.getElementById('modal-anime-subtitle');
+const modalAnimeSynopsis = document.getElementById('modal-anime-synopsis');
+const modalMetaEpisodes = document.getElementById('modal-meta-episodes');
+const modalMetaSeason = document.getElementById('modal-meta-season');
+const modalMetaStudio = document.getElementById('modal-meta-studio');
+const modalMetaGenres = document.getElementById('modal-meta-genres');
+const modalAiringBox = document.getElementById('modal-airing-box');
+const modalAiringDesc = document.getElementById('modal-airing-desc');
+const btnActionWatched = document.getElementById('btn-action-watched');
+const lblActionWatched = document.getElementById('lbl-action-watched');
+const btnActionPlantowatch = document.getElementById('btn-action-plantowatch');
+const lblActionPlantowatch = document.getElementById('lbl-action-plantowatch');
+const btnActionFavorite = document.getElementById('btn-action-favorite');
+const lblActionFavorite = document.getElementById('lbl-action-favorite');
+const btnActionTrailer = document.getElementById('btn-action-trailer');
 const formAddComment = document.getElementById('form-add-comment');
 const commentText = document.getElementById('comment-text');
 const btnSaveComment = document.getElementById('btn-save-comment');
 const commentsList = document.getElementById('comments-list');
-const btnCloseModal = document.getElementById('btn-close-modal');
+const modalCommentsCount = document.getElementById('modal-comments-count');
 
-// Modal de Perfil de Usuário
+// Modal de Assistidos (Progresso)
+const watchedModal = document.getElementById('watched-modal');
+const btnCloseWatchedModal = document.getElementById('btn-close-watched-modal');
+const formEditWatched = document.getElementById('form-edit-watched');
+const watchedModalAnimeTitle = document.getElementById('watched-modal-anime-title');
+const inputWatchedEps = document.getElementById('input-watched-eps');
+const inputWatchedTotal = document.getElementById('input-watched-total');
+const inputWatchedScore = document.getElementById('input-watched-score');
+const inputWatchedStatus = document.getElementById('input-watched-status');
+const btnRemoveWatchedRecord = document.getElementById('btn-remove-watched-record');
+
+// Modal de Perfil
 const profileModal = document.getElementById('profile-modal');
 const btnCloseProfileModal = document.getElementById('btn-close-profile-modal');
-const profileModalTitle = document.getElementById('profile-modal-title');
+const btnOpenMyProfile = document.getElementById('btn-open-my-profile');
 const profileAvatarImg = document.getElementById('profile-avatar-img');
 const profileAvatarFallback = document.getElementById('profile-avatar-fallback');
 const profilePhotoControls = document.getElementById('profile-photo-controls');
@@ -45,6 +97,7 @@ const inputProfilePhoto = document.getElementById('input-profile-photo');
 const uploadPhotoSpinner = document.getElementById('upload-photo-spinner');
 const profileDisplayName = document.getElementById('profile-display-name');
 const profileRoleBadge = document.getElementById('profile-role-badge');
+const profilePremiumBadge = document.getElementById('profile-premium-badge');
 const profileEmail = document.getElementById('profile-email');
 const profileCreatedAt = document.getElementById('profile-created-at');
 const profileBioContainer = document.getElementById('profile-bio-container');
@@ -55,42 +108,50 @@ const formEditProfile = document.getElementById('form-edit-profile');
 const editProfileName = document.getElementById('edit-profile-name');
 const editProfileBio = document.getElementById('edit-profile-bio');
 const editBioCounter = document.getElementById('edit-bio-counter');
-const btnSaveProfile = document.getElementById('btn-save-profile');
-const btnCancelEditProfile = document.getElementById('btn-cancel-edit-profile');
+const statCountWatched = document.getElementById('stat-count-watched');
+const statLimitWatched = document.getElementById('stat-limit-watched');
+const statCountPlantowatch = document.getElementById('stat-count-plantowatch');
+const statLimitPlantowatch = document.getElementById('stat-limit-plantowatch');
+const statCountFavorites = document.getElementById('stat-count-favorites');
+const statLimitFavorites = document.getElementById('stat-limit-favorites');
+const btnProfileSubscribe = document.getElementById('btn-profile-subscribe');
 const profileAlert = document.getElementById('profile-alert');
-const profileFavsCount = document.getElementById('profile-favs-count');
-const profileFavsList = document.getElementById('profile-favs-list');
-const profileFavsEmpty = document.getElementById('profile-favs-empty');
-const btnOpenMyProfile = document.getElementById('btn-open-my-profile');
 
 // Toast Container
 const toastContainer = document.getElementById('toast-container');
 
-// Estado da Aplicação
-let moviesState = [];
-let currentFilter = 'all'; // 'all' | 'favorites'
+// ============================================================================
+// ESTADO GLOBAL DA APLICAÇÃO
+// ============================================================================
+let currentView = 'explore'; // 'explore' | 'simulcast' | 'watched' | 'plantowatch' | 'favorites'
 let currentSearch = '';
-let currentSort = 'year-desc';
-let activeMovieForModal = null;
-let activeProfileUserId = 'me';
-let activeProfileData = null;
+let currentSort = 'popularity-desc';
+let activeSimulcastDay = 'hoje';
 
-/**
- * Exibe notificação Toast
- */
+let catalogAnimes = [];
+let simulcastWeeklyData = null;
+let simulcastTodayData = null;
+let watchedState = [];
+let planToWatchState = [];
+let favoritesState = [];
+
+let activeAnimeForModal = null;
+let activeWatchedTarget = null;
+let currentUser = null;
+
+// ============================================================================
+// TOAST NOTIFICATIONS
+// ============================================================================
 export function showToast(message, type = 'info') {
+  if (!toastContainer) return;
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
-  
-  let iconSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
-  if (type === 'success') {
-    iconSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-  }
-  if (type === 'error') {
-    iconSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
-  }
 
-  toast.innerHTML = `<span class="toast-icon-wrapper">${iconSvg}</span> <span>${message}</span>`;
+  let icon = 'ℹ️';
+  if (type === 'success') icon = '✅';
+  if (type === 'error') icon = '⚠️';
+
+  toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
   toastContainer.appendChild(toast);
 
   setTimeout(() => {
@@ -101,37 +162,132 @@ export function showToast(message, type = 'info') {
   }, 3500);
 }
 
-/**
- * Formata data no padrão brasileiro
- */
-function formatDate(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+// ============================================================================
+// 1. CARREGAMENTO E ATUALIZAÇÃO DE DADOS
+// ============================================================================
+
+async function refreshUserData() {
+  currentUser = api.getUser();
+  if (!currentUser) return;
+
+  try {
+    const [watchedRes, planRes, favRes] = await Promise.all([
+      api.getWatched().catch(() => ({ animes: [] })),
+      api.getPlanToWatch().catch(() => ({ animes: [] })),
+      api.getFavorites().catch(() => ({ favorites: [] }))
+    ]);
+
+    watchedState = watchedRes.animes || [];
+    planToWatchState = planRes.animes || [];
+    favoritesState = favRes.favorites || [];
+
+    // Atualiza contadores dos pills na navbar
+    if (navCountWatched) navCountWatched.textContent = watchedState.length;
+    if (navCountPlantowatch) navCountPlantowatch.textContent = planToWatchState.length;
+    if (navCountFavorites) navCountFavorites.textContent = favoritesState.length;
+
+    updateCapacityBadge();
+  } catch (err) {
+    console.warn('[AniTrack] Falha ao sincronizar dados do usuário:', err.message);
+  }
+}
+
+function updateCapacityBadge() {
+  if (!capacityBadge) return;
+  const isPro = currentUser?.is_premium;
+
+  if (isPro) {
+    capacityBadge.innerHTML = `<span style="color: var(--accent-gold); font-weight: 700;">⭐ Membro Otaku Pro (Ilimitado)</span>`;
+    return;
+  }
+
+  if (currentView === 'watched') {
+    capacityBadge.textContent = `Capacidade Free: ${watchedState.length}/15 assistidos`;
+  } else if (currentView === 'plantowatch') {
+    capacityBadge.textContent = `Capacidade Free: ${planToWatchState.length}/10 na fila`;
+  } else if (currentView === 'favorites') {
+    capacityBadge.textContent = `Capacidade Free: ${favoritesState.length}/5 favoritos`;
+  } else {
+    capacityBadge.textContent = `Plano Gratuito • Trava no 16º assistido, 11º na fila ou 6º favorito`;
+  }
+}
+
+// ============================================================================
+// 2. RENDERIZAÇÃO DAS VIEWS
+// ============================================================================
+
+function switchView(viewName) {
+  currentView = viewName;
+
+  // Atualiza botões da navbar
+  [navBtnExplore, navBtnSimulcast, navBtnWatched, navBtnPlantowatch, navBtnFavorites].forEach((btn) => {
+    if (btn) btn.classList.toggle('active', btn.dataset.view === viewName);
   });
+
+  // Atualiza títulos e controles visíveis
+  simulcastDaysBar?.classList.toggle('hidden', viewName !== 'simulcast');
+  document.querySelector('.sort-box')?.classList.toggle('hidden', viewName === 'simulcast');
+
+  if (viewName === 'explore') {
+    currentViewBadge.textContent = 'Catálogo Geral';
+    catalogHeading.textContent = 'Explorar Animes';
+    catalogSubheading.textContent = 'Obras em alta, populares e lançamentos sincronizados via AniList';
+    loadExploreCatalog();
+  } else if (viewName === 'simulcast') {
+    currentViewBadge.textContent = 'Simulcast Sazonal';
+    catalogHeading.textContent = 'Grade Semanal de Simulcast';
+    catalogSubheading.textContent = 'Episódios transmitidos simultaneamente com o Japão nesta temporada';
+    loadSimulcast();
+  } else if (viewName === 'watched') {
+    currentViewBadge.textContent = 'Histórico Pessoal';
+    catalogHeading.textContent = 'Animes Assistidos';
+    catalogSubheading.textContent = 'Registro de obras concluídas, episódios vistos e notas pessoais';
+    renderWatchedList();
+  } else if (viewName === 'plantowatch') {
+    currentViewBadge.textContent = 'Fila de Espera';
+    catalogHeading.textContent = 'Animes que Irá Ver';
+    catalogSubheading.textContent = 'Sua lista de planejamento (Watchlist) para as próximas férias';
+    renderPlanToWatchList();
+  } else if (viewName === 'favorites') {
+    currentViewBadge.textContent = 'Galeria Pessoal';
+    catalogHeading.textContent = 'Meus Animes Favoritos';
+    catalogSubheading.textContent = 'Obras de maior destaque no seu perfil comunitário';
+    renderFavoritesList();
+  }
+
+  updateCapacityBadge();
 }
 
 /**
- * Carrega lista de filmes do backend
+ * Carrega e renderiza o catálogo geral
  */
-async function loadMovies(forceRefresh = false) {
+async function loadExploreCatalog() {
   loadingState.classList.remove('hidden');
   emptyState.classList.add('hidden');
-  moviesGrid.innerHTML = '';
+  animesGrid.innerHTML = '';
   catalogAlert.classList.add('hidden');
 
+  let sortParam = 'POPULARITY_DESC';
+  if (currentSort === 'score-desc') sortParam = 'SCORE_DESC';
+  if (currentSort === 'trending-desc') sortParam = 'TRENDING_DESC';
+  if (currentSort === 'title-asc') sortParam = 'TITLE_ROMAJI';
+
   try {
-    const data = await api.getMovies(forceRefresh);
-    moviesState = data.movies || [];
-    renderCatalog();
+    const data = await api.getAnimes({
+      perPage: 30,
+      search: currentSearch || undefined,
+      sort: sortParam
+    });
+
+    catalogAnimes = data.animes || [];
+
+    if (catalogAnimes.length === 0) {
+      showEmptyState('Nenhum anime encontrado', 'Tente pesquisar por outros termos.');
+    } else {
+      renderAnimeCards(catalogAnimes);
+    }
   } catch (err) {
-    console.error('Erro ao carregar catálogo:', err);
-    catalogAlert.textContent = `Aviso: ${err.message || 'Falha ao buscar catálogo de filmes na TMDB.'}`;
+    catalogAlert.textContent = `Aviso: ${err.message || 'Erro ao carregar catálogo na AniList.'}`;
     catalogAlert.className = 'alert alert-danger';
     catalogAlert.classList.remove('hidden');
   } finally {
@@ -140,761 +296,769 @@ async function loadMovies(forceRefresh = false) {
 }
 
 /**
- * Filtra e ordena os filmes conforme o estado atual
+ * Carrega e renderiza a grade de simulcast
  */
-function getFilteredAndSortedMovies() {
-  let list = [...moviesState];
+async function loadSimulcast() {
+  loadingState.classList.remove('hidden');
+  emptyState.classList.add('hidden');
+  animesGrid.innerHTML = '';
+  catalogAlert.classList.add('hidden');
 
-  // 1. Filtro por Aba (Todos / Favoritos)
-  if (currentFilter === 'favorites') {
-    list = list.filter((m) => m.is_favorite);
+  try {
+    if (!simulcastWeeklyData || !simulcastTodayData) {
+      const [weekly, today] = await Promise.all([
+        api.getSimulcastWeekly(),
+        api.getSimulcastToday()
+      ]);
+      simulcastWeeklyData = weekly;
+      simulcastTodayData = today;
+
+      if (dayCountHoje) {
+        dayCountHoje.textContent = today.episodes?.length || 0;
+      }
+      if (navBadgeSimulcastToday && today.episodes?.length > 0) {
+        navBadgeSimulcastToday.classList.remove('hidden');
+      }
+    }
+
+    renderActiveSimulcastDay();
+  } catch (err) {
+    catalogAlert.textContent = `Erro ao consultar grade de Simulcast: ${err.message}`;
+    catalogAlert.className = 'alert alert-danger';
+    catalogAlert.classList.remove('hidden');
+  } finally {
+    loadingState.classList.add('hidden');
+  }
+}
+
+function renderActiveSimulcastDay() {
+  emptyState.classList.add('hidden');
+  animesGrid.innerHTML = '';
+
+  let list = [];
+  if (activeSimulcastDay === 'hoje') {
+    list = simulcastTodayData?.episodes || [];
+  } else {
+    list = simulcastWeeklyData?.days?.[activeSimulcastDay] || [];
   }
 
-  // 2. Filtro por Busca (Texto)
-  if (currentSearch.trim() !== '') {
-    const term = currentSearch.toLowerCase().trim();
-    list = list.filter((m) => {
-      const matchTitle = m.title?.toLowerCase().includes(term);
-      const matchOriginal = m.original_title?.toLowerCase().includes(term);
-      const matchChar = m.character?.toLowerCase().includes(term);
-      const matchOverview = m.overview?.toLowerCase().includes(term);
-      return matchTitle || matchOriginal || matchChar || matchOverview;
-    });
+  // Aplica busca textual se houver
+  if (currentSearch) {
+    const q = currentSearch.toLowerCase();
+    list = list.filter((item) => (item.titulo || '').toLowerCase().includes(q) || (item.titulo_romaji || '').toLowerCase().includes(q));
   }
 
-  // 3. Ordenação
-  list.sort((a, b) => {
-    if (currentSort === 'year-desc') {
-      const yearA = parseInt(a.release_year, 10) || 0;
-      const yearB = parseInt(b.release_year, 10) || 0;
-      return yearB - yearA;
-    }
-    if (currentSort === 'year-asc') {
-      const yearA = parseInt(a.release_year, 10) || 0;
-      const yearB = parseInt(b.release_year, 10) || 0;
-      return yearA - yearB;
-    }
-    if (currentSort === 'rating-desc') {
-      return (b.vote_average || 0) - (a.vote_average || 0);
-    }
-    if (currentSort === 'title-asc') {
-      return (a.title || '').localeCompare(b.title || '');
-    }
-    return 0;
-  });
-
-  return list;
+  if (list.length === 0) {
+    showEmptyState(`Nenhum episódio agendado para ${activeSimulcastDay === 'hoje' ? 'hoje' : activeSimulcastDay}`, 'Selecione outro dia da semana acima.');
+  } else {
+    renderAnimeCards(list, true);
+  }
 }
 
 /**
- * Renderiza o catálogo na tela
+ * Renderiza animes assistidos
  */
-function renderCatalog() {
-  const filtered = getFilteredAndSortedMovies();
-  
-  // Atualiza contadores nas abas
-  const totalFavs = moviesState.filter((m) => m.is_favorite).length;
-  badgeAllCount.textContent = moviesState.length;
-  badgeFavCount.textContent = totalFavs;
-
-  const badgeFavLimit = document.getElementById('badge-fav-limit');
-  const currentUser = api.getUser();
-  if (badgeFavLimit) {
-    if (currentUser?.is_premium) {
-      badgeFavLimit.textContent = ' (⭐ Ilimitado)';
-      badgeFavLimit.className = 'badge-fav-limit text-gold';
-      badgeFavLimit.classList.remove('hidden');
-    } else {
-      badgeFavLimit.textContent = ' / 5';
-      badgeFavLimit.className = 'badge-fav-limit text-muted';
-      badgeFavLimit.classList.remove('hidden');
-    }
-  }
-
-  moviesGrid.innerHTML = '';
-
-  if (filtered.length === 0) {
-    emptyState.classList.remove('hidden');
-    if (currentFilter === 'favorites') {
-      emptyTitle.textContent = 'Nenhum filme favoritado';
-      emptyDesc.textContent = 'Clique no botão de favoritar em qualquer filme para adicioná-lo aos seus favoritos.';
-    } else {
-      emptyTitle.textContent = 'Nenhum filme encontrado';
-      emptyDesc.textContent = `Nenhum resultado para a busca "${currentSearch}".`;
-    }
-    return;
-  }
-
+function renderWatchedList() {
   emptyState.classList.add('hidden');
+  animesGrid.innerHTML = '';
 
-  filtered.forEach((movie) => {
+  let list = [...watchedState];
+  if (currentSearch) {
+    const q = currentSearch.toLowerCase();
+    list = list.filter((item) => (item.titulo || '').toLowerCase().includes(q));
+  }
+
+  if (list.length === 0) {
+    showEmptyState('Nenhum anime assistido registrado ainda', 'Explore o catálogo e clique no ícone de olho para marcar seu progresso.');
+  } else {
+    renderAnimeCards(list, false, 'watched');
+  }
+}
+
+/**
+ * Renderiza animes que irá ver (Watchlist)
+ */
+function renderPlanToWatchList() {
+  emptyState.classList.add('hidden');
+  animesGrid.innerHTML = '';
+
+  let list = [...planToWatchState];
+  if (currentSearch) {
+    const q = currentSearch.toLowerCase();
+    list = list.filter((item) => (item.titulo || '').toLowerCase().includes(q));
+  }
+
+  if (list.length === 0) {
+    showEmptyState('Sua fila de espera está vazia', 'Adicione obras que estreiam na próxima temporada para planejar o que assistir.');
+  } else {
+    renderAnimeCards(list, false, 'plantowatch');
+  }
+}
+
+/**
+ * Renderiza animes favoritos
+ */
+function renderFavoritesList() {
+  emptyState.classList.add('hidden');
+  animesGrid.innerHTML = '';
+
+  let list = [...favoritesState];
+  if (currentSearch) {
+    const q = currentSearch.toLowerCase();
+    list = list.filter((item) => (item.titulo || '').toLowerCase().includes(q));
+  }
+
+  if (list.length === 0) {
+    showEmptyState('Nenhum anime favoritado', 'Clique no ícone de coração nos animes para destacá-los aqui.');
+  } else {
+    renderAnimeCards(list, false, 'favorites');
+  }
+}
+
+function showEmptyState(title, desc) {
+  emptyTitle.textContent = title;
+  emptyDesc.textContent = desc;
+  emptyState.classList.remove('hidden');
+}
+
+// ============================================================================
+// 3. RENDERIZAÇÃO DE CARDS DE ANIME
+// ============================================================================
+
+function renderAnimeCards(list, isSimulcast = false, contextType = null) {
+  animesGrid.innerHTML = '';
+
+  const watchedMap = new Map(watchedState.map((w) => [w.anime_id, w]));
+  const planMap = new Map(planToWatchState.map((p) => [p.anime_id, p]));
+  const favSet = new Set(favoritesState.map((f) => f.anime_id));
+
+  list.forEach((item) => {
+    const animeId = item.anime_id || item.id;
+    const title = item.titulo || item.title || item.titulo_romaji || 'Anime sem título';
+    const poster = item.poster_url || item.poster_path || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"><rect fill="%231a2336" width="200" height="300"/><text fill="%2394a3b8" font-family="sans-serif" font-size="14" dy="10.5" font-weight="bold" x="50%" y="50%" text-anchor="middle">Sem Pôster</text></svg>';
+
+    const isFav = favSet.has(animeId);
+    const watchedData = watchedMap.get(animeId);
+    const isPlan = planMap.has(animeId);
+
     const card = document.createElement('div');
-    card.className = 'movie-card';
-    card.dataset.movieId = movie.id;
+    card.className = 'anime-card';
+    card.setAttribute('data-id', animeId);
 
-    const posterFallback = `<div class="poster-fallback">
-      <svg class="poster-fallback-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="m9 8 6 4-6 4Z"></path></svg>
-      <span>Sem pôster</span>
-    </div>`;
+    // Badges no topo do pôster
+    let topBadgesHtml = '';
+    if (isSimulcast && item.episodio) {
+      topBadgesHtml += `<span class="pill-badge pill-badge-accent">EP ${item.episodio}</span>`;
+      if (item.horario_exibicao) {
+        topBadgesHtml += `<span class="pill-badge pill-badge-neutral">${item.horario_exibicao}</span>`;
+      }
+    } else {
+      const score = item.score_medio || (item.score ? item.score : null);
+      if (score) {
+        topBadgesHtml += `<span class="pill-badge pill-badge-gold">★ ${(score / 10).toFixed(1)}</span>`;
+      }
+      if (item.formato) {
+        topBadgesHtml += `<span class="pill-badge pill-badge-neutral">${item.formato}</span>`;
+      }
+    }
 
-    const posterMarkup = movie.poster_url
-      ? `<img src="${movie.poster_url}" alt="${movie.title}" class="movie-poster" loading="lazy" onerror="this.parentElement.innerHTML=\`${posterFallback}\`">`
-      : posterFallback;
-
-    const ratingBadge = movie.vote_average > 0
-      ? `<div class="badge-rating">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-          ${movie.vote_average.toFixed(1)}
-        </div>`
-      : '';
-
-    const yearBadge = movie.release_year && movie.release_year !== 'N/A'
-      ? `<div class="badge-year">${movie.release_year}</div>`
-      : '';
-
-    const characterText = movie.character
-      ? `<div class="movie-character">como ${escapeHtml(movie.character)}</div>`
-      : '';
-
-    const favIconSvg = movie.is_favorite
-      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>'
-      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>';
-
-    const favButtonClass = movie.is_favorite ? 'btn-action btn-fav is-favorite' : 'btn-action btn-fav';
-    const favButtonText = movie.is_favorite ? 'Favorito' : 'Favoritar';
+    // Progresso para itens assistidos
+    let progressHtml = '';
+    if (watchedData) {
+      const eps = watchedData.episodios_vistos || 0;
+      const total = watchedData.total_episodios || 12;
+      const pct = Math.min(Math.round((eps / total) * 100), 100);
+      progressHtml = `
+        <div class="card-progress-bar" title="${eps}/${total} episódios (${pct}%)">
+          <div class="card-progress-fill" style="width: ${pct}%;"></div>
+        </div>
+      `;
+    }
 
     card.innerHTML = `
-      <div class="poster-container">
-        ${posterMarkup}
-        ${ratingBadge}
-        ${yearBadge}
-      </div>
-      <div class="movie-details">
-        <h3 class="movie-title">${escapeHtml(movie.title)}</h3>
-        ${characterText}
-        <p class="movie-synopsis">${escapeHtml(movie.overview)}</p>
-        <div class="movie-actions">
-          <button class="${favButtonClass}" data-action="toggle-fav" title="Favoritar este filme">
-            ${favIconSvg}
-            <span>${favButtonText}</span>
+      <div class="anime-card-poster-wrapper">
+        <img class="anime-card-poster" src="${poster}" alt="${title}" loading="lazy">
+        <div class="anime-card-badges-top">${topBadgesHtml}</div>
+        
+        <div class="anime-card-actions-quick" onclick="event.stopPropagation();">
+          <button class="quick-action-btn btn-quick-watched ${watchedData ? 'active-watched' : ''}" title="${watchedData ? 'Editar progresso' : 'Marcar como Assistido'}" data-id="${animeId}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
-          <button class="btn-action btn-comments" data-action="open-comments" title="Ver ou adicionar comentários">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-            <span>Notas</span>
-            <span class="badge comments-badge">${movie.comments_count || 0}</span>
+          
+          <button class="quick-action-btn btn-quick-plantowatch ${isPlan ? 'active-plantowatch' : ''}" title="${isPlan ? 'Remover da fila' : 'Adicionar à fila (Irá Ver)'}" data-id="${animeId}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+          </button>
+
+          <button class="quick-action-btn btn-quick-favorite ${isFav ? 'active-favorite' : ''}" title="${isFav ? 'Remover dos favoritos' : 'Favoritar'}" data-id="${animeId}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
           </button>
         </div>
       </div>
+
+      <div class="anime-card-info">
+        <h4 class="anime-card-title">${title}</h4>
+        <div class="anime-card-meta">
+          <span>${item.total_episodios || item.episodes ? `${item.total_episodios || item.episodes} eps` : 'Em exibição'}</span>
+          ${item.generos && item.generos[0] ? `<span>• ${item.generos[0]}</span>` : ''}
+        </div>
+        ${progressHtml}
+      </div>
     `;
 
-    // Eventos nos botões do Card
-    const btnFav = card.querySelector('[data-action="toggle-fav"]');
-    btnFav.addEventListener('click', (e) => {
+    // Eventos nos botões rápidos
+    const btnWatched = card.querySelector('.btn-quick-watched');
+    const btnPlan = card.querySelector('.btn-quick-plantowatch');
+    const btnFav = card.querySelector('.btn-quick-favorite');
+
+    btnWatched.addEventListener('click', (e) => {
       e.stopPropagation();
-      toggleFavorite(movie);
+      openWatchedModal(item);
     });
 
-    const btnComments = card.querySelector('[data-action="open-comments"]');
-    btnComments.addEventListener('click', (e) => {
+    btnPlan.addEventListener('click', async (e) => {
       e.stopPropagation();
-      openCommentsModal(movie);
+      await togglePlanToWatch(item);
     });
 
-    moviesGrid.appendChild(card);
+    btnFav.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await toggleFavorite(item);
+    });
+
+    // Abrir Modal de Detalhes
+    card.addEventListener('click', () => {
+      openAnimeDetailModal(animeId);
+    });
+
+    animesGrid.appendChild(card);
   });
 }
 
-function escapeHtml(text) {
-  if (!text) return '';
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+// ============================================================================
+// 4. AÇÕES RÁPIDAS (FAVORITAR, FILA, ASSISTIDOS)
+// ============================================================================
 
-/**
- * Alterna favorito (Adicionar / Remover)
- */
-async function toggleFavorite(movie) {
-  const isCurrentlyFav = movie.is_favorite;
-
-  // Atualização otimista na interface
-  movie.is_favorite = !isCurrentlyFav;
-  renderCatalog();
+async function toggleFavorite(anime) {
+  const animeId = anime.anime_id || anime.id;
+  const isFav = favoritesState.some((f) => f.anime_id === animeId);
 
   try {
-    if (isCurrentlyFav) {
-      await api.removeFavorite(movie.id);
-      showToast(`"${movie.title}" removido dos favoritos.`, 'info');
+    if (isFav) {
+      await api.removeFavorite(animeId);
+      showToast('Anime removido dos favoritos.', 'info');
     } else {
-      await api.addFavorite(movie);
-      showToast(`"${movie.title}" adicionado aos favoritos!`, 'success');
+      await api.addFavorite(anime);
+      showToast('Anime adicionado aos favoritos!', 'success');
     }
+    await refreshUserData();
+    reRenderCurrentView();
   } catch (err) {
-    // Reverte em caso de falha
-    movie.is_favorite = isCurrentlyFav;
-    renderCatalog();
-    showToast(err.message || 'Erro ao atualizar favoritos.', 'error');
-
-    // Se atingiu o limite do plano gratuito, convida para o upgrade exibindo o modal de benefícios
-    if (err.message && (err.message.includes('limite') || err.message.includes('Premium'))) {
+    if (err.code === 'PREMIUM_REQUIRED') {
       openPremiumModal();
+    } else {
+      showToast(err.message, 'error');
     }
   }
 }
 
-/**
- * Abre o Modal de Comentários
- */
-async function openCommentsModal(movie) {
-  activeMovieForModal = movie;
-  modalTitle.textContent = movie.title;
-  modalYear.textContent = `${movie.release_year || 'Ano N/A'} · Tom Hanks`;
+async function togglePlanToWatch(anime) {
+  const animeId = anime.anime_id || anime.id;
+  const isPlan = planToWatchState.some((p) => p.anime_id === animeId);
 
-  if (movie.poster_url) {
-    modalPoster.src = movie.poster_url;
-    modalPoster.classList.remove('hidden');
-  } else {
-    modalPoster.classList.add('hidden');
-  }
-
-  commentText.value = '';
-  commentsList.innerHTML = '<div class="spinner"></div>';
-  modalCommentsCount.textContent = '...';
-  commentsModal.classList.remove('hidden');
-
-  await loadMovieComments(movie.id);
-}
-
-/**
- * Fecha o Modal de Comentários
- */
-function closeCommentsModal() {
-  commentsModal.classList.add('hidden');
-  activeMovieForModal = null;
-}
-
-/**
- * Busca comentários de um filme no backend
- */
-async function loadMovieComments(movieId) {
   try {
-    const res = await api.getMovieComments(movieId);
-    const comments = res.comments || [];
-    renderModalComments(comments);
-    
-    // Atualiza contagem no estado local e re-renderiza badges
-    if (activeMovieForModal) {
-      activeMovieForModal.comments_count = comments.length;
-      modalCommentsCount.textContent = comments.length;
-      updateMovieCardBadge(activeMovieForModal.id, comments.length);
+    if (isPlan) {
+      await api.removePlanToWatch(animeId);
+      showToast('Anime removido da fila de espera.', 'info');
+    } else {
+      await api.addPlanToWatch({
+        anime_id: animeId,
+        titulo: anime.titulo || anime.title || anime.titulo_romaji,
+        poster_url: anime.poster_url || anime.poster_path,
+        previsao_estreia: anime.temporada ? `${anime.temporada} ${anime.ano_temporada || ''}` : null
+      });
+      showToast('Anime adicionado à sua fila (Irá Ver)!', 'success');
     }
+    await refreshUserData();
+    reRenderCurrentView();
   } catch (err) {
-    commentsList.innerHTML = `<div class="alert alert-danger text-xs">Erro ao carregar comentários: ${err.message}</div>`;
+    if (err.code === 'PREMIUM_REQUIRED') {
+      openPremiumModal();
+    } else {
+      showToast(err.message, 'error');
+    }
   }
 }
 
-/**
- * Renderiza lista de comentários no modal
- */
-function renderModalComments(comments) {
-  modalCommentsCount.textContent = comments.length;
+function reRenderCurrentView() {
+  if (currentView === 'explore') renderAnimeCards(catalogAnimes);
+  else if (currentView === 'simulcast') renderActiveSimulcastDay();
+  else if (currentView === 'watched') renderWatchedList();
+  else if (currentView === 'plantowatch') renderPlanToWatchList();
+  else if (currentView === 'favorites') renderFavoritesList();
+}
 
-  if (comments.length === 0) {
-    commentsList.innerHTML = `
-      <div class="text-center text-muted text-xs" style="padding: 1.5rem 0;">
-        Nenhum comentário adicionado ainda. Seja o primeiro a comentar!
-      </div>
-    `;
-    return;
-  }
+// ============================================================================
+// 5. MODAL DE DETALHES DO ANIME & COMENTÁRIOS
+// ============================================================================
 
-  const currentUser = api.getUser();
+async function openAnimeDetailModal(animeId) {
+  animeModal?.classList.remove('hidden');
+  modalAnimeTitle.textContent = 'Carregando detalhes...';
+  modalAnimeSubtitle.textContent = '';
+  modalAnimeSynopsis.textContent = '';
+  commentsList.innerHTML = '<div class="text-muted text-xs text-center py-3">Carregando comentários comunitários...</div>';
 
-  commentsList.innerHTML = '';
-  comments.forEach((comment) => {
-    const item = document.createElement('div');
-    item.className = 'comment-item';
+  try {
+    const anime = await api.getAnime(animeId);
+    activeAnimeForModal = anime;
 
-    const isOwn = currentUser && (currentUser.id === comment.usuario_id);
-    const canDelete = isOwn || (currentUser && currentUser.role === 'admin');
+    modalBannerImg.src = anime.banner_url || anime.poster_url || '';
+    modalPosterImg.src = anime.poster_url || '';
+    modalAnimeTitle.textContent = anime.titulo || anime.titulo_romaji || 'Anime';
+    modalAnimeSubtitle.textContent = anime.titulo_original ? `${anime.titulo_original} • ${anime.titulo_romaji || ''}` : (anime.titulo_romaji || '');
+    modalAnimeSynopsis.textContent = anime.sinopse || anime.overview || 'Sinopse não informada.';
 
-    const authorDisplay = isOwn
-      ? `${escapeHtml(comment.autor_nome || 'Você')} (Você)`
-      : escapeHtml(comment.autor_nome || 'Usuário');
+    modalFormatBadge.textContent = anime.formato || 'TV';
+    modalStatusBadge.textContent = anime.status || 'STATUS';
+    modalScoreBadge.textContent = anime.score_medio ? `★ ${(anime.score_medio / 10).toFixed(1)}` : '★ -';
 
-    const isPremiumAuthor = Boolean(comment.autor_is_premium);
-    const premiumBadgeHtml = isPremiumAuthor ? ` <span class="comment-premium-badge">⭐ PREMIUM</span>` : '';
+    modalMetaEpisodes.textContent = anime.total_episodios ? `${anime.total_episodios} episódios` : 'Em exibição';
+    modalMetaSeason.textContent = anime.temporada ? `${anime.temporada} ${anime.ano_temporada || ''}` : '-';
+    modalMetaStudio.textContent = anime.estudio || 'Desconhecido';
+    modalMetaGenres.textContent = anime.generos?.join(', ') || '-';
 
-    const authorBadge = ` • <button type="button" class="comment-author-btn" data-author-id="${comment.usuario_id}" title="Ver perfil de ${authorDisplay}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><strong>${authorDisplay}</strong></button>${premiumBadgeHtml}`;
-
-    const deleteBtnHtml = canDelete
-      ? `<button class="btn-delete-comment" title="${isOwn ? 'Excluir seu comentário' : 'Excluir comentário (Moderação)'}" data-comment-id="${comment.id}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-        </button>`
-      : '';
-
-    item.innerHTML = `
-      <div class="comment-item-content">
-        <p class="comment-text">${escapeHtml(comment.texto)}</p>
-        <div class="comment-date">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -1px; margin-right: 3px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>${formatDate(comment.criado_em)}${authorBadge}
-        </div>
-      </div>
-      ${deleteBtnHtml}
-    `;
-
-    const btnAuthor = item.querySelector('.comment-author-btn');
-    btnAuthor?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openProfileModal(comment.usuario_id);
-    });
-
-    if (canDelete) {
-      const btnDelete = item.querySelector('.btn-delete-comment');
-      btnDelete?.addEventListener('click', () => handleDeleteComment(comment.id));
+    // Próximo episódio
+    if (anime.proximo_episodio) {
+      modalAiringBox.classList.remove('hidden');
+      const airDate = new Date(anime.proximo_episodio.airing_at * 1000);
+      modalAiringDesc.textContent = `Episódio ${anime.proximo_episodio.episodio} estreia em ${airDate.toLocaleDateString('pt-BR')} às ${airDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    } else {
+      modalAiringBox.classList.add('hidden');
     }
 
-    commentsList.appendChild(item);
-  });
+    // Trailer
+    if (anime.trailer && anime.trailer.url) {
+      btnActionTrailer.href = anime.trailer.url;
+      btnActionTrailer.classList.remove('hidden');
+    } else {
+      btnActionTrailer.classList.add('hidden');
+    }
+
+    updateModalActionButtons(anime);
+    renderComments(anime.comments || []);
+  } catch (err) {
+    showToast(`Erro ao abrir detalhes: ${err.message}`, 'error');
+    closeAnimeDetailModal();
+  }
 }
 
-/**
- * Adiciona novo comentário
- */
-async function handleAddComment(e) {
+function updateModalActionButtons(anime) {
+  const animeId = anime.id || anime.anime_id;
+  const isFav = favoritesState.some((f) => f.anime_id === animeId);
+  const watchedData = watchedState.find((w) => w.anime_id === animeId);
+  const isPlan = planToWatchState.some((p) => p.anime_id === animeId);
+
+  lblActionFavorite.textContent = isFav ? 'Favoritado ❤️' : 'Favoritar';
+  lblActionPlantowatch.textContent = isPlan ? 'Na Fila 📋' : 'Adicionar à Fila (Irá Ver)';
+  lblActionWatched.textContent = watchedData ? `Assistido (${watchedData.episodios_vistos || 0} eps)` : 'Marcar como Assistido';
+}
+
+function closeAnimeDetailModal() {
+  animeModal?.classList.add('hidden');
+  activeAnimeForModal = null;
+}
+
+// Submissão de Comentário Comunitário
+formAddComment?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!activeMovieForModal) return;
+  if (!activeAnimeForModal) return;
 
   const texto = commentText.value.trim();
   if (!texto) return;
 
   btnSaveComment.disabled = true;
-  btnSaveComment.textContent = 'Salvando...';
+  btnSaveComment.innerHTML = '<span class="spinner-sm"></span>';
 
   try {
-    await api.addComment(activeMovieForModal.id, texto);
+    await api.addComment(activeAnimeForModal.id, texto);
     commentText.value = '';
-    showToast('Comentário salvo com sucesso!', 'success');
-    await loadMovieComments(activeMovieForModal.id);
+    showToast('Comentário publicado!', 'success');
+
+    // Recarrega comentários
+    const updated = await api.getAnime(activeAnimeForModal.id);
+    renderComments(updated.comments || []);
   } catch (err) {
-    showToast(err.message || 'Erro ao salvar comentário.', 'error');
+    showToast(`Erro ao comentar: ${err.message}`, 'error');
   } finally {
     btnSaveComment.disabled = false;
-    btnSaveComment.innerHTML = '<span>Salvar Comentário</span>';
+    btnSaveComment.innerHTML = '<span>Publicar Comentário</span>';
   }
+});
+
+function renderComments(comments) {
+  commentsList.innerHTML = '';
+  modalCommentsCount.textContent = comments.length;
+
+  if (comments.length === 0) {
+    commentsList.innerHTML = '<p class="text-muted text-xs text-center py-3">Nenhum comentário ainda. Seja o primeiro a comentar!</p>';
+    return;
+  }
+
+  const currentUserId = currentUser?.id;
+  const isAdmin = currentUser?.role === 'admin';
+
+  comments.forEach((c) => {
+    const item = document.createElement('div');
+    item.className = 'comment-item';
+
+    const avatarUrl = c.autor_foto ? `/api/profile/photo/${c.autor_foto}` : null;
+    const authorInitial = (c.autor_nome || 'O')[0].toUpperCase();
+    const canDelete = isAdmin || c.usuario_id === currentUserId;
+
+    item.innerHTML = `
+      <div class="comment-avatar">
+        ${avatarUrl ? `<img src="${avatarUrl}" alt="Avatar">` : authorInitial}
+      </div>
+      <div class="comment-body">
+        <div class="comment-header">
+          <div class="comment-author-group">
+            <span class="comment-author-name">${c.autor_nome || 'Otaku'}</span>
+            ${c.autor_is_premium ? '<span class="user-premium-badge">⭐ OTAKU PRO</span>' : ''}
+            <span class="comment-date">• ${new Date(c.criado_em).toLocaleDateString('pt-BR')}</span>
+          </div>
+          ${canDelete ? `<button class="btn-delete-comment" data-id="${c.id}" title="Excluir comentário">&times;</button>` : ''}
+        </div>
+        <p class="comment-text">${c.texto}</p>
+      </div>
+    `;
+
+    const btnDel = item.querySelector('.btn-delete-comment');
+    btnDel?.addEventListener('click', async () => {
+      if (!confirm('Deseja realmente excluir este comentário?')) return;
+      try {
+        await api.deleteComment(c.id);
+        showToast('Comentário excluído.', 'info');
+        const updated = await api.getAnime(activeAnimeForModal.id);
+        renderComments(updated.comments || []);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    commentsList.appendChild(item);
+  });
 }
 
-/**
- * Exclui comentário
- */
-async function handleDeleteComment(commentId) {
-  if (!confirm('Deseja realmente excluir esta anotação?')) return;
+// Botões de Ação no Modal de Detalhes
+btnActionFavorite?.addEventListener('click', async () => {
+  if (!activeAnimeForModal) return;
+  await toggleFavorite(activeAnimeForModal);
+  updateModalActionButtons(activeAnimeForModal);
+});
+
+btnActionPlantowatch?.addEventListener('click', async () => {
+  if (!activeAnimeForModal) return;
+  await togglePlanToWatch(activeAnimeForModal);
+  updateModalActionButtons(activeAnimeForModal);
+});
+
+btnActionWatched?.addEventListener('click', () => {
+  if (!activeAnimeForModal) return;
+  openWatchedModal(activeAnimeForModal);
+});
+
+// ============================================================================
+// 6. MODAL DE ASSISTIDOS (EDITAR PROGRESSO / NOTA)
+// ============================================================================
+
+function openWatchedModal(anime) {
+  activeWatchedTarget = anime;
+  watchedModal?.classList.remove('hidden');
+
+  const animeId = anime.anime_id || anime.id;
+  const existing = watchedState.find((w) => w.anime_id === animeId);
+
+  watchedModalAnimeTitle.textContent = anime.titulo || anime.title || anime.titulo_romaji || 'Anime';
+  inputWatchedEps.value = existing ? existing.episodios_vistos : (anime.total_episodios || 12);
+  inputWatchedTotal.value = existing ? existing.total_episodios : (anime.total_episodios || 12);
+  inputWatchedScore.value = existing && existing.nota ? String(existing.nota) : '';
+  inputWatchedStatus.value = existing ? existing.status : 'concluido';
+
+  btnRemoveWatchedRecord.classList.toggle('hidden', !existing);
+}
+
+function closeWatchedModal() {
+  watchedModal?.classList.add('hidden');
+  activeWatchedTarget = null;
+}
+
+formEditWatched?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!activeWatchedTarget) return;
+
+  const animeId = activeWatchedTarget.anime_id || activeWatchedTarget.id;
+  const existing = watchedState.find((w) => w.anime_id === animeId);
+
+  const payload = {
+    anime_id: animeId,
+    titulo: activeWatchedTarget.titulo || activeWatchedTarget.title || activeWatchedTarget.titulo_romaji,
+    poster_url: activeWatchedTarget.poster_url || activeWatchedTarget.poster_path,
+    episodios_vistos: parseInt(inputWatchedEps.value, 10) || 0,
+    total_episodios: parseInt(inputWatchedTotal.value, 10) || 12,
+    nota: inputWatchedScore.value ? parseInt(inputWatchedScore.value, 10) : null,
+    status: inputWatchedStatus.value
+  };
 
   try {
-    await api.deleteComment(commentId);
-    showToast('Comentário removido.', 'info');
-    if (activeMovieForModal) {
-      await loadMovieComments(activeMovieForModal.id);
+    if (existing) {
+      await api.updateWatched(existing.id, payload);
+      showToast('Registro de assistido atualizado!', 'success');
+    } else {
+      await api.addWatched(payload);
+      showToast('Anime adicionado aos assistidos!', 'success');
+    }
+    closeWatchedModal();
+    await refreshUserData();
+    reRenderCurrentView();
+    if (activeAnimeForModal && (activeAnimeForModal.id === animeId || activeAnimeForModal.anime_id === animeId)) {
+      updateModalActionButtons(activeAnimeForModal);
     }
   } catch (err) {
-    showToast(err.message || 'Erro ao excluir comentário.', 'error');
+    if (err.code === 'PREMIUM_REQUIRED') {
+      closeWatchedModal();
+      openPremiumModal();
+    } else {
+      showToast(err.message, 'error');
+    }
   }
-}
+});
 
-function updateMovieCardBadge(movieId, count) {
-  const card = document.querySelector(`.movie-card[data-movie-id="${movieId}"]`);
-  if (card) {
-    const badge = card.querySelector('.comments-badge');
-    if (badge) badge.textContent = count;
-  }
-}
-
-// ================= PERFIL DE USUÁRIO (OBJECT STORAGE & DADOS) =================
-
-/**
- * Abre o Modal de Perfil do Usuário
- * @param {string|number} userId - 'me' ou o ID numérico do usuário
- */
-async function openProfileModal(userId = 'me') {
-  activeProfileUserId = userId;
-  profileModal?.classList.remove('hidden');
-  resetProfileModalUI();
+btnRemoveWatchedRecord?.addEventListener('click', async () => {
+  if (!activeWatchedTarget) return;
+  const animeId = activeWatchedTarget.anime_id || activeWatchedTarget.id;
+  const existing = watchedState.find((w) => w.anime_id === animeId);
+  if (!existing) return;
 
   try {
-    const data = await api.getProfile(userId);
-    const profile = data.profile;
-    activeProfileData = profile;
-    renderProfileData(profile);
+    await api.removeWatched(existing.id);
+    showToast('Anime removido dos assistidos.', 'info');
+    closeWatchedModal();
+    await refreshUserData();
+    reRenderCurrentView();
+    if (activeAnimeForModal) updateModalActionButtons(activeAnimeForModal);
   } catch (err) {
-    showToast(err.message || 'Erro ao carregar dados do perfil.', 'error');
-    closeProfileModal();
+    showToast(err.message, 'error');
+  }
+});
+
+// ============================================================================
+// 7. MODAL DE PERFIL DO USUÁRIO & MINIO S3
+// ============================================================================
+
+async function openProfileModal() {
+  profileModal?.classList.remove('hidden');
+  profileAlert.classList.add('hidden');
+  formEditProfile.classList.add('hidden');
+  profileBioContainer.classList.remove('hidden');
+
+  try {
+    const res = await api.getProfile('me');
+    const profile = res.profile;
+
+    profileDisplayName.textContent = profile.nome || 'Usuário';
+    profileEmail.textContent = profile.email || '';
+    profileRoleBadge.textContent = profile.role || 'usuario';
+    profileCreatedAt.textContent = profile.criado_em ? `Membro desde ${new Date(profile.criado_em).toLocaleDateString('pt-BR')}` : '';
+    profileBioText.textContent = profile.bio || 'Sem biografia cadastrada ainda.';
+
+    editProfileName.value = profile.nome || '';
+    editProfileBio.value = profile.bio || '';
+    editBioCounter.textContent = `${(profile.bio || '').length}/500`;
+
+    // Atualiza estatísticas do perfil
+    statCountWatched.textContent = watchedState.length;
+    statCountPlantowatch.textContent = planToWatchState.length;
+    statCountFavorites.textContent = favoritesState.length;
+
+    const isPro = Boolean(profile.is_premium);
+    profilePremiumBadge.classList.toggle('hidden', !isPro);
+
+    statLimitWatched.textContent = isPro ? '⭐ Ilimitado' : 'Limite Free: 15';
+    statLimitPlantowatch.textContent = isPro ? '⭐ Ilimitado' : 'Limite Free: 10';
+    statLimitFavorites.textContent = isPro ? '⭐ Ilimitado' : 'Limite Free: 5';
+
+    // Promo box do Otaku Pro
+    document.getElementById('profile-pro-promo')?.classList.toggle('hidden', isPro);
+
+    // Avatar MinIO
+    if (profile.foto_url) {
+      const clean = profile.foto_url.split('?')[0];
+      profileAvatarImg.src = `${clean}?t=${Date.now()}`;
+      profileAvatarImg.classList.remove('hidden');
+      profileAvatarFallback.classList.add('hidden');
+    } else {
+      profileAvatarImg.classList.add('hidden');
+      profileAvatarFallback.classList.remove('hidden');
+    }
+
+    profileOwnerActions.classList.remove('hidden');
+    profilePhotoControls.classList.remove('hidden');
+  } catch (err) {
+    showToast(`Erro ao carregar perfil: ${err.message}`, 'error');
   }
 }
 
 function closeProfileModal() {
   profileModal?.classList.add('hidden');
-  resetProfileModalUI();
-  activeProfileData = null;
 }
 
-function resetProfileModalUI() {
-  formEditProfile?.classList.add('hidden');
-  profileBioContainer?.classList.remove('hidden');
-  profileAlert?.classList.add('hidden');
-  if (profileAlert) profileAlert.textContent = '';
-  if (inputProfilePhoto) inputProfilePhoto.value = '';
-}
-
-function renderProfileData(profile) {
-  if (!profile) return;
-
-  const isOwner = !!profile.is_owner;
-
-  // Título e identificação básica
-  if (profileModalTitle) {
-    profileModalTitle.textContent = isOwner ? 'Meu Perfil' : `Perfil de ${profile.nome}`;
-  }
-  if (profileDisplayName) profileDisplayName.textContent = profile.nome;
-  if (profileEmail) {
-    profileEmail.innerHTML = profile.email
-      ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>${escapeHtml(profile.email)}`
-      : '';
-  }
-  if (profileCreatedAt) {
-    profileCreatedAt.innerHTML = profile.criado_em
-      ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;"><rect width="18" height="18" x="3" y="4" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Membro desde ${formatDate(profile.criado_em).split(' ')[0]}`
-      : '';
-  }
-
-  // Role & Premium Badge
-  if (profileRoleBadge) {
-    const role = profile.role || 'usuario';
-    profileRoleBadge.textContent = role === 'admin' ? 'Admin' : 'Usuário';
-    profileRoleBadge.className = `user-role-badge role-${role}`;
-  }
-
-  const profilePremiumBadge = document.getElementById('profile-premium-badge');
-  const profilePremiumCard = document.getElementById('profile-premium-card');
-  const premiumBoxTitle = document.getElementById('premium-box-title');
-  const premiumBoxDesc = document.getElementById('premium-box-desc');
-  const btnProfileSubscribe = document.getElementById('btn-profile-subscribe');
-
-  if (profile.is_premium) {
-    profilePremiumBadge?.classList.remove('hidden');
-    if (isOwner) {
-      profilePremiumCard?.classList.remove('hidden');
-      if (premiumBoxTitle) premiumBoxTitle.textContent = '⭐ Assinante Premium Ativo';
-      if (premiumBoxDesc) premiumBoxDesc.textContent = 'Você possui favoritos ilimitados e destaque exclusivo em toda a plataforma!';
-      if (btnProfileSubscribe) btnProfileSubscribe.classList.add('hidden');
-    } else {
-      profilePremiumCard?.classList.add('hidden');
-    }
-  } else {
-    profilePremiumBadge?.classList.add('hidden');
-    if (isOwner) {
-      profilePremiumCard?.classList.remove('hidden');
-      if (premiumBoxTitle) premiumBoxTitle.textContent = '⭐ Seja Assinante Premium';
-      if (premiumBoxDesc) premiumBoxDesc.textContent = 'Desbloqueie favoritos ilimitados e selo de apoiador por R$ 9,90/mês.';
-      if (btnProfileSubscribe) {
-        btnProfileSubscribe.classList.remove('hidden');
-        btnProfileSubscribe.onclick = () => {
-          openPremiumModal();
-        };
-      }
-    } else {
-      profilePremiumCard?.classList.add('hidden');
-    }
-  }
-
-  // Foto de Perfil
-  if (profile.foto_url) {
-    profileAvatarImg.src = profile.foto_url;
-    profileAvatarImg.classList.remove('hidden');
-    profileAvatarFallback.classList.add('hidden');
-  } else {
-    profileAvatarImg.classList.add('hidden');
-    profileAvatarFallback.classList.remove('hidden');
-  }
-
-  // Bio
-  if (profileBioText) {
-    profileBioText.textContent = profile.bio ? profile.bio : 'Sem biografia cadastrada ainda.';
-  }
-
-  // Controles exclusivos do proprietário (IDOR defense no frontend também)
-  if (isOwner) {
-    profilePhotoControls?.classList.remove('hidden');
-    profileOwnerActions?.classList.remove('hidden');
-    if (editProfileName) editProfileName.value = profile.nome;
-    if (editProfileBio) {
-      editProfileBio.value = profile.bio || '';
-      if (editBioCounter) editBioCounter.textContent = `${(profile.bio || '').length}/500`;
-    }
-
-    // Sincroniza foto no navbar e no cache local
-    if (profile.foto_url) {
-      updateNavUserAvatar(profile.foto_url);
-      const user = api.getUser();
-      if (user) {
-        user.foto_url = profile.foto_url;
-        user.foto_perfil = profile.foto_perfil;
-        api.setUser(user);
-      }
-    }
-  } else {
-    profilePhotoControls?.classList.add('hidden');
-    profileOwnerActions?.classList.add('hidden');
-    formEditProfile?.classList.add('hidden');
-  }
-
-  // Filmes Favoritados
-  renderProfileFavorites(profile.favoritos || []);
-}
-
-function renderProfileFavorites(favorites) {
-  if (!profileFavsList || !profileFavsCount || !profileFavsEmpty) return;
-
-  profileFavsCount.textContent = favorites.length;
-
-  if (favorites.length === 0) {
-    profileFavsList.innerHTML = '';
-    profileFavsEmpty.classList.remove('hidden');
-    return;
-  }
-
-  profileFavsEmpty.classList.add('hidden');
-  profileFavsList.innerHTML = '';
-
-  favorites.forEach((fav) => {
-    const item = document.createElement('div');
-    item.className = 'profile-fav-item';
-    item.title = `Ver comentários de ${fav.titulo}`;
-
-    const posterSrc = fav.poster_url || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="150" viewBox="0 0 100 150"><rect width="100" height="150" fill="%23222"/><text x="50" y="75" fill="%23888" text-anchor="middle">Sem foto</text></svg>';
-
-    item.innerHTML = `
-      <img src="${posterSrc}" alt="${escapeHtml(fav.titulo)}" class="profile-fav-poster" loading="lazy">
-      <div class="profile-fav-info">
-        <span class="profile-fav-title">${escapeHtml(fav.titulo)}</span>
-        <div class="profile-fav-meta">
-          <span style="display: inline-flex; align-items: center; gap: 4px;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-            ${fav.comments_count || 0}
-          </span>
-        </div>
-      </div>
-    `;
-
-    item.addEventListener('click', () => {
-      closeProfileModal();
-      const movie = moviesState.find(m => m.id === fav.tmdb_movie_id);
-      if (movie) {
-        openCommentsModal(movie);
-      } else {
-        openCommentsModal({
-          id: fav.tmdb_movie_id,
-          title: fav.titulo,
-          poster_path: fav.poster_path,
-          release_date: fav.criado_em
-        });
-      }
-    });
-
-    profileFavsList.appendChild(item);
-  });
-}
-
-/**
- * Upload de Foto de Perfil para o MinIO
- */
-async function handlePhotoUpload(e) {
-  const file = e.target.files?.[0];
+// Upload de Avatar via MinIO S3
+inputProfilePhoto?.addEventListener('change', async () => {
+  const file = inputProfilePhoto.files[0];
   if (!file) return;
-
-  // Validação de Tamanho no Frontend (máx 5MB)
-  const MAX_SIZE = 5 * 1024 * 1024;
-  if (file.size > MAX_SIZE) {
-    showToast('A imagem excede o tamanho máximo de 5MB.', 'error');
-    inputProfilePhoto.value = '';
-    return;
-  }
-
-  // Validação de formato de arquivo no Frontend
-  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-  if (!allowed.includes(file.type)) {
-    showToast('Tipo de arquivo não permitido. Envie JPEG, PNG, WebP ou GIF.', 'error');
-    inputProfilePhoto.value = '';
-    return;
-  }
 
   const formData = new FormData();
   formData.append('foto', file);
 
+  uploadPhotoSpinner.classList.remove('hidden');
+
   try {
-    uploadPhotoSpinner?.classList.remove('hidden');
-    const result = await api.uploadProfilePhoto(formData, activeProfileUserId);
+    const res = await api.uploadProfilePhoto(formData, 'me');
+    showToast('Foto de perfil atualizada no MinIO com sucesso!', 'success');
 
-    showToast('Foto de perfil salva com sucesso no MinIO!', 'success');
-
-    if (result.foto_url) {
-      profileAvatarImg.src = result.foto_url;
+    // Atualiza avatar imediatamente na interface
+    if (res.foto_url) {
+      updateNavUserAvatar(res.foto_url);
+      profileAvatarImg.src = `${res.foto_url}?t=${Date.now()}`;
       profileAvatarImg.classList.remove('hidden');
       profileAvatarFallback.classList.add('hidden');
-      
-      // Atualiza thumbnail no navbar
-      updateNavUserAvatar(result.foto_url);
-
-      // Atualiza usuário salvo no localStorage
-      const user = api.getUser();
-      if (user) {
-        user.foto_url = result.foto_url;
-        user.foto_perfil = result.foto_perfil;
-        api.setUser(user);
-      }
     }
   } catch (err) {
-    showToast(err.message || 'Falha no upload da foto.', 'error');
+    showToast(`Erro no upload: ${err.message}`, 'error');
   } finally {
-    uploadPhotoSpinner?.classList.add('hidden');
+    uploadPhotoSpinner.classList.add('hidden');
     inputProfilePhoto.value = '';
   }
-}
+});
 
-/**
- * Salva alterações de nome e bio
- */
-async function handleProfileSave(e) {
+btnToggleEditProfile?.addEventListener('click', () => {
+  formEditProfile.classList.toggle('hidden');
+  profileBioContainer.classList.toggle('hidden');
+});
+
+formEditProfile?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const nome = editProfileName.value.trim();
   const bio = editProfileBio.value.trim();
 
-  if (!nome || nome.length < 2) {
-    showToast('O nome deve conter pelo menos 2 caracteres.', 'error');
-    return;
-  }
-
-  btnSaveProfile.disabled = true;
-  btnSaveProfile.textContent = 'Salvando...';
-
   try {
-    const result = await api.updateProfile({ nome, bio }, activeProfileUserId);
-    showToast('Perfil atualizado com sucesso!', 'success');
-
-    profileDisplayName.textContent = nome;
-    profileBioText.textContent = bio || 'Sem biografia cadastrada ainda.';
+    const res = await api.updateProfile({ nome, bio }, 'me');
+    showToast('Perfil atualizado!', 'success');
+    profileDisplayName.textContent = res.user.nome;
+    profileBioText.textContent = res.user.bio || 'Sem biografia cadastrada.';
     formEditProfile.classList.add('hidden');
     profileBioContainer.classList.remove('hidden');
-
-    const navUserName = document.getElementById('nav-user-name');
-    if (navUserName) navUserName.textContent = nome;
-
-    const user = api.getUser();
-    if (user) {
-      user.nome = nome;
-      user.bio = bio;
-      api.setUser(user);
-    }
   } catch (err) {
-    showToast(err.message || 'Erro ao salvar perfil.', 'error');
-  } finally {
-    btnSaveProfile.disabled = false;
-    btnSaveProfile.innerHTML = '<span>Salvar Alterações</span>';
+    showToast(err.message, 'error');
   }
-}
-
-// ================= EVENT LISTENERS =================
-
-// Filtros de Abas
-filterAllBtn?.addEventListener('click', () => {
-  currentFilter = 'all';
-  filterAllBtn.classList.add('active');
-  filterFavBtn.classList.remove('active');
-  renderCatalog();
 });
 
-filterFavBtn?.addEventListener('click', () => {
-  currentFilter = 'favorites';
-  filterFavBtn.classList.add('active');
-  filterAllBtn.classList.remove('active');
-  renderCatalog();
+editProfileBio?.addEventListener('input', () => {
+  editBioCounter.textContent = `${editProfileBio.value.length}/500`;
 });
 
-// Busca por Texto
+document.getElementById('btn-cancel-edit-profile')?.addEventListener('click', () => {
+  formEditProfile.classList.add('hidden');
+  profileBioContainer.classList.remove('hidden');
+});
+
+// ============================================================================
+// 8. EVENTOS GLOBAIS & INICIALIZAÇÃO
+// ============================================================================
+
+// Navegação de Views
+navBtnExplore?.addEventListener('click', () => switchView('explore'));
+navBtnSimulcast?.addEventListener('click', () => switchView('simulcast'));
+navBtnWatched?.addEventListener('click', () => switchView('watched'));
+navBtnPlantowatch?.addEventListener('click', () => switchView('plantowatch'));
+navBtnFavorites?.addEventListener('click', () => switchView('favorites'));
+brandLogo?.addEventListener('click', () => switchView('explore'));
+
+// Busca e Filtros
 inputSearch?.addEventListener('input', (e) => {
-  currentSearch = e.target.value;
-  if (currentSearch.trim() !== '') {
-    btnClearSearch.classList.remove('hidden');
-  } else {
-    btnClearSearch.classList.add('hidden');
-  }
-  renderCatalog();
+  currentSearch = e.target.value.trim();
+  btnClearSearch.classList.toggle('hidden', !currentSearch);
+  reRenderCurrentView();
 });
 
 btnClearSearch?.addEventListener('click', () => {
   inputSearch.value = '';
   currentSearch = '';
   btnClearSearch.classList.add('hidden');
-  renderCatalog();
+  reRenderCurrentView();
 });
 
-// Ordenação
 selectSort?.addEventListener('change', (e) => {
   currentSort = e.target.value;
-  renderCatalog();
+  if (currentView === 'explore') loadExploreCatalog();
 });
 
-// Modal Events
-btnCloseModal?.addEventListener('click', closeCommentsModal);
-commentsModal?.addEventListener('click', (e) => {
-  if (e.target === commentsModal) closeCommentsModal();
+// Seleção de dia no Simulcast
+simulcastDaysBar?.querySelectorAll('.day-tab-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    simulcastDaysBar.querySelectorAll('.day-tab-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeSimulcastDay = btn.dataset.day;
+    renderActiveSimulcastDay();
+  });
 });
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !commentsModal.classList.contains('hidden')) {
-    closeCommentsModal();
-  }
-});
-formAddComment?.addEventListener('submit', handleAddComment);
 
-// Modal de Perfil Events
-btnOpenMyProfile?.addEventListener('click', () => openProfileModal('me'));
+// Botões de Fechar Modais
+btnCloseAnimeModal?.addEventListener('click', closeAnimeDetailModal);
+btnCloseWatchedModal?.addEventListener('click', closeWatchedModal);
 btnCloseProfileModal?.addEventListener('click', closeProfileModal);
-profileModal?.addEventListener('click', (e) => {
-  if (e.target === profileModal) closeProfileModal();
+btnOpenMyProfile?.addEventListener('click', openProfileModal);
+btnProfileSubscribe?.addEventListener('click', () => {
+  closeProfileModal();
+  openPremiumModal();
 });
+
+// Fechamento no backdrop
+[animeModal, watchedModal, profileModal].forEach((modal) => {
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) modal.classList.add('hidden');
+  });
+});
+
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !profileModal.classList.contains('hidden')) {
+  if (e.key === 'Escape') {
+    closeAnimeDetailModal();
+    closeWatchedModal();
     closeProfileModal();
   }
 });
-btnToggleEditProfile?.addEventListener('click', () => {
-  formEditProfile.classList.toggle('hidden');
-  profileBioContainer.classList.toggle('hidden');
-});
-btnCancelEditProfile?.addEventListener('click', () => {
-  formEditProfile.classList.add('hidden');
-  profileBioContainer.classList.remove('hidden');
-});
-editProfileBio?.addEventListener('input', (e) => {
-  if (editBioCounter) editBioCounter.textContent = `${e.target.value.length}/500`;
-});
-inputProfilePhoto?.addEventListener('change', handlePhotoUpload);
-formEditProfile?.addEventListener('submit', handleProfileSave);
 
-// Autenticação Eventos
-window.addEventListener('auth:login', () => {
-  loadMovies();
+// Sincronização após login/logout
+window.addEventListener('auth:login', async (e) => {
+  currentUser = e.detail;
+  await refreshUserData();
+  switchView('explore');
 });
 
 window.addEventListener('auth:logout', () => {
-  moviesState = [];
-  closeCommentsModal();
-  closeProfileModal();
+  currentUser = null;
+  watchedState = [];
+  planToWatchState = [];
+  favoritesState = [];
 });
 
-// Inicialização da Aplicação
-document.addEventListener('DOMContentLoaded', () => {
-  initAuth();
-});
+// Boot da Aplicação
+async function initApp() {
+  await initAuth();
+  if (api.getToken()) {
+    await refreshUserData();
+    switchView('explore');
+  }
+}
+
+initApp();

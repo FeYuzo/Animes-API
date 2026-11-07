@@ -1,6 +1,6 @@
 /**
- * Módulo de Integração com a API Backend
- * Gerencia tokens de autenticação e requisições HTTP
+ * Módulo de Integração com a API Backend — AniTrack
+ * Gerencia tokens de autenticação, sessões e requisições HTTP para a API de Animes e Microsserviços.
  */
 
 const API_BASE = '/api';
@@ -68,7 +68,11 @@ export const api = {
 
     if (!response.ok) {
       const errorMsg = data.error || data.message || `Erro ${response.status}: Falha na requisição`;
-      throw new Error(errorMsg);
+      const err = new Error(errorMsg);
+      err.status = response.status;
+      err.code = data.code;
+      err.data = data;
+      throw err;
     }
 
     return data;
@@ -121,7 +125,7 @@ export const api = {
     return this.request(`/auth/role/${userId}`);
   },
 
-  // ===== ESQUECI MINHA SENHA & REDEFINIÇÃO (EXPIRAÇÃO DE 30 MIN) =====
+  // ===== ESQUECI MINHA SENHA & REDEFINIÇÃO =====
   async forgotPassword(email) {
     return this.request('/auth/forgot-password', {
       method: 'POST',
@@ -142,45 +146,131 @@ export const api = {
     });
   },
 
-  // ===== MOVIES =====
+  // ===== ANIMES & CATÁLOGO =====
+  async getAnimes(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set('page', params.page);
+    if (params.perPage) searchParams.set('perPage', params.perPage);
+    if (params.search) searchParams.set('search', params.search);
+    if (params.sort) searchParams.set('sort', params.sort);
+    if (params.season) searchParams.set('season', params.season);
+    if (params.seasonYear) searchParams.set('seasonYear', params.seasonYear);
+    if (params.genre) searchParams.set('genre', params.genre);
+
+    const queryStr = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return this.request(`/animes${queryStr}`);
+  },
+
+  async getAnime(id) {
+    return this.request(`/animes/${id}`);
+  },
+
+  // Retrocompatibilidade para chamadas antigas
   async getMovies(forceRefresh = false) {
-    const query = forceRefresh ? '?refresh=true' : '';
-    return this.request(`/movies${query}`);
+    return this.getAnimes();
   },
-
   async getMovie(id) {
-    return this.request(`/movies/${id}`);
+    return this.getAnime(id);
   },
 
-  // ===== FAVORITES =====
-  async getFavorites() {
-    return this.request('/favorites');
+  // ===== R4: SIMULCAST =====
+  async getSimulcastWeekly() {
+    return this.request('/animes/simulcast');
   },
 
-  async addFavorite(movie) {
-    return this.request('/favorites', {
+  async getSimulcastToday() {
+    return this.request('/animes/simulcast/hoje');
+  },
+
+  // ===== R1: ANIMES ASSISTIDOS =====
+  async getWatched() {
+    return this.request('/animes/assistidos');
+  },
+
+  async addWatched({ anime_id, titulo, poster_url, episodios_vistos = 0, total_episodios = 12, nota = null, status = 'concluido' }) {
+    return this.request('/animes/assistidos', {
       method: 'POST',
       body: JSON.stringify({
-        tmdb_movie_id: movie.id,
-        titulo: movie.title,
-        poster_path: movie.poster_path
+        anime_id,
+        titulo,
+        poster_url,
+        episodios_vistos,
+        total_episodios,
+        nota,
+        status
       })
     });
   },
 
-  async removeFavorite(tmdbMovieId) {
-    return this.request(`/favorites/${tmdbMovieId}`, {
+  async updateWatched(id, data) {
+    return this.request(`/animes/assistidos/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async removeWatched(id) {
+    return this.request(`/animes/assistidos/${id}`, {
       method: 'DELETE'
     });
   },
 
-  // ===== COMMENTS =====
-  async getMovieComments(tmdbMovieId) {
-    return this.request(`/movies/${tmdbMovieId}/comments`);
+  // ===== R2: ANIMES QUE IRÁ VER (PLAN TO WATCH) =====
+  async getPlanToWatch() {
+    return this.request('/animes/ira-ver');
   },
 
-  async addComment(tmdbMovieId, texto) {
-    return this.request(`/movies/${tmdbMovieId}/comments`, {
+  async addPlanToWatch({ anime_id, titulo, poster_url, previsao_estreia = null }) {
+    return this.request('/animes/ira-ver', {
+      method: 'POST',
+      body: JSON.stringify({
+        anime_id,
+        titulo,
+        poster_url,
+        previsao_estreia
+      })
+    });
+  },
+
+  async removePlanToWatch(id) {
+    return this.request(`/animes/ira-ver/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // ===== R3: ANIMES FAVORITOS =====
+  async getFavorites() {
+    return this.request('/animes/favoritos');
+  },
+
+  async addFavorite(anime) {
+    return this.request('/animes/favoritos', {
+      method: 'POST',
+      body: JSON.stringify({
+        anime_id: anime.id || anime.anime_id,
+        titulo: anime.titulo || anime.title,
+        poster_url: anime.poster_url || anime.poster_path
+      })
+    });
+  },
+
+  async removeFavorite(animeId) {
+    return this.request(`/animes/favoritos/${animeId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // ===== COMENTÁRIOS =====
+  async getAnimeComments(animeId) {
+    return this.request(`/animes/${animeId}/comments`);
+  },
+
+  async getMovieComments(id) {
+    return this.getAnimeComments(id);
+  },
+
+  async addComment(animeId, texto) {
+    return this.request(`/animes/${animeId}/comments`, {
       method: 'POST',
       body: JSON.stringify({ texto })
     });
@@ -192,7 +282,7 @@ export const api = {
     });
   },
 
-  // ===== PROFILE (OBJECT STORAGE & DADOS) =====
+  // ===== PERFIL DO USUÁRIO & MINIO =====
   async getProfile(userId = 'me') {
     return this.request(`/profile/${userId}`);
   },
@@ -211,7 +301,7 @@ export const api = {
     });
   },
 
-  // ===== STRIPE (PLANO PREMIUM) =====
+  // ===== STRIPE (PLANO OTAKU PRO) =====
   async createStripeCheckout() {
     return this.request('/stripe/create-checkout-session', {
       method: 'POST'
