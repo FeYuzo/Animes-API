@@ -9,6 +9,7 @@ import { initAuth, updateNavUserAvatar, openPremiumModal } from './auth.js';
 // ============================================================================
 // ELEMENTOS DO DOM
 // ============================================================================
+const authView = document.getElementById('auth-view');
 const appView = document.getElementById('app-view');
 const brandLogo = document.getElementById('brand-logo');
 
@@ -852,7 +853,7 @@ btnRemoveWatchedRecord?.addEventListener('click', async () => {
 });
 
 // ============================================================================
-// 7. MODAL DE PERFIL DO USUÁRIO & MINIO S3
+// 7. MODAL DE PERFIL DO USUÁRIO
 // ============================================================================
 
 async function openProfileModal() {
@@ -890,7 +891,7 @@ async function openProfileModal() {
     // Promo box do Otaku Pro
     document.getElementById('profile-pro-promo')?.classList.toggle('hidden', isPro);
 
-    // Avatar MinIO
+    // Avatar do usuário
     if (profile.foto_url) {
       const clean = profile.foto_url.split('?')[0];
       profileAvatarImg.src = `${clean}?t=${Date.now()}`;
@@ -912,7 +913,7 @@ function closeProfileModal() {
   profileModal?.classList.add('hidden');
 }
 
-// Upload de Avatar via MinIO S3
+// Upload de Foto de Perfil
 inputProfilePhoto?.addEventListener('change', async () => {
   const file = inputProfilePhoto.files[0];
   if (!file) return;
@@ -924,7 +925,7 @@ inputProfilePhoto?.addEventListener('change', async () => {
 
   try {
     const res = await api.uploadProfilePhoto(formData, 'me');
-    showToast('Foto de perfil atualizada no MinIO com sucesso!', 'success');
+    showToast('Foto de perfil atualizada com sucesso!', 'success');
 
     // Atualiza avatar imediatamente na interface
     if (res.foto_url) {
@@ -982,7 +983,13 @@ navBtnSimulcast?.addEventListener('click', () => switchView('simulcast'));
 navBtnWatched?.addEventListener('click', () => switchView('watched'));
 navBtnPlantowatch?.addEventListener('click', () => switchView('plantowatch'));
 navBtnFavorites?.addEventListener('click', () => switchView('favorites'));
-brandLogo?.addEventListener('click', () => switchView('explore'));
+brandLogo?.addEventListener('click', () => {
+  if (authView && !authView.classList.contains('hidden')) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    switchView('explore');
+  }
+});
 
 // Busca e Filtros
 inputSearch?.addEventListener('input', (e) => {

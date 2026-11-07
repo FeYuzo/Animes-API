@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AniTrack — Gestão de Animes & Simulcast</title>
+  <title>AniTrack — Seu Hub de Animes & Simulcast</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="css/styles.css?v=3.0.0">
+  <link rel="stylesheet" href="css/styles.css?v=4.0.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%236366f1%22 stroke-width=%222.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22></circle><polygon points=%2210 8 16 12 10 16 10 8%22 fill=%22%236366f1%22></polygon></svg>">
 </head>
 <body>
 
-  <!-- ================= HEADER & NAVBAR ================= -->
+  <!-- ================= NAVBAR ================= -->
   <header class="navbar">
     <div class="container navbar-container">
       
-      <!-- Logo & Brand -->
-      <div class="brand" id="brand-logo" role="button" title="Voltar ao início">
+      <!-- Brand Logo -->
+      <div class="brand" id="brand-logo" role="button" title="Página inicial">
         <div class="brand-icon-wrapper">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
@@ -32,35 +32,35 @@
         </div>
       </div>
 
-      <!-- App Main Navigation Links (Visible when logged in) -->
+      <!-- App Views Navigation (Visible when logged in) -->
       <nav id="nav-views" class="nav-views hidden">
-        <button id="nav-btn-explore" class="nav-link-btn active" data-view="explore">
+        <button id="nav-btn-explore" class="nav-link-btn active" data-view="explore" type="button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <span>Explorar</span>
         </button>
-        <button id="nav-btn-simulcast" class="nav-link-btn" data-view="simulcast">
+        <button id="nav-btn-simulcast" class="nav-link-btn" data-view="simulcast" type="button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
           <span>Simulcast</span>
           <span id="nav-badge-simulcast-today" class="pill-badge pill-badge-accent hidden">Hoje</span>
         </button>
-        <button id="nav-btn-watched" class="nav-link-btn" data-view="watched">
+        <button id="nav-btn-watched" class="nav-link-btn" data-view="watched" type="button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           <span>Assistidos</span>
           <span id="nav-count-watched" class="pill-counter">0</span>
         </button>
-        <button id="nav-btn-plantowatch" class="nav-link-btn" data-view="plantowatch">
+        <button id="nav-btn-plantowatch" class="nav-link-btn" data-view="plantowatch" type="button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
           <span>Irá Ver</span>
           <span id="nav-count-plantowatch" class="pill-counter">0</span>
         </button>
-        <button id="nav-btn-favorites" class="nav-link-btn" data-view="favorites">
+        <button id="nav-btn-favorites" class="nav-link-btn" data-view="favorites" type="button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
           <span>Favoritos</span>
           <span id="nav-count-favorites" class="pill-counter">0</span>
         </button>
       </nav>
 
-      <!-- User Menu & Theme Controls -->
+      <!-- Right Navigation Actions -->
       <div class="navbar-actions">
         
         <!-- Theme Toggle (Claro / Noturno) -->
@@ -81,6 +81,12 @@
           </svg>
           <span id="theme-toggle-label" class="theme-toggle-label">Tema</span>
         </button>
+
+        <!-- Guest Actions (When NOT logged in) -->
+        <div id="guest-nav" class="guest-nav">
+          <button id="btn-header-login" class="btn btn-ghost btn-sm" type="button">Entrar</button>
+          <button id="btn-header-register" class="btn btn-primary btn-sm" type="button">Criar Conta</button>
+        </div>
 
         <!-- User Controls (When Authenticated) -->
         <div id="user-nav" class="user-nav hidden">
@@ -111,229 +117,516 @@
     </div>
   </header>
 
-  <!-- ================= VIEW 1: AUTHENTICATION ================= -->
-  <section id="auth-view" class="view auth-section">
-    <div class="container auth-container">
-      
-      <!-- Hero Intro -->
-      <div class="auth-hero">
-        <div class="hero-badge">
-          <span class="pulse-dot"></span>
-          <span>Plataforma & API SaaS de Animes</span>
-        </div>
-        <h1 class="hero-title">Sua jornada otaku centralizada em um só lugar.</h1>
-        <p class="hero-desc">
-          Acompanhe os lançamentos semanais em simulcast, mantenha o histórico das obras concluídas, organize sua fila de espera e destaque seus títulos favoritos em uma interface limpa, rápida e sem poluição.
-        </p>
-
-        <div class="hero-features-grid">
-          <div class="feature-card">
-            <div class="feature-icon-wrapper">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-            </div>
-            <div>
-              <h4 class="feature-title">Simulcast em Tempo Real</h4>
-              <p class="feature-desc">Grade semanal oficial com episódios exibidos no Japão agrupados por dia.</p>
-            </div>
-          </div>
-
-          <div class="feature-card">
-            <div class="feature-icon-wrapper">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-            </div>
-            <div>
-              <h4 class="feature-title">Controle de Progresso</h4>
-              <p class="feature-desc">Registre episódios vistos, notas pessoais e marque status com um clique.</p>
-            </div>
-          </div>
-
-          <div class="feature-card">
-            <div class="feature-icon-wrapper">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
-            </div>
-            <div>
-              <h4 class="feature-title">Fila de Espera (Plan to Watch)</h4>
-              <p class="feature-desc">Salve animes planejados para as férias com previsão de estreia.</p>
-            </div>
-          </div>
-
-          <div class="feature-card">
-            <div class="feature-icon-wrapper">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-            </div>
-            <div>
-              <h4 class="feature-title">Comunidade & Assinatura Pro</h4>
-              <p class="feature-desc">Upload de avatares HD no MinIO e capacidade ilimitada com Stripe.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Auth Forms Card -->
-      <div class="auth-card">
+  <!-- ================= VIEW 1: SCROLLABLE LANDING PAGE ================= -->
+  <section id="auth-view" class="view landing-page-view">
+    
+    <!-- 1. HERO SECTION -->
+    <section class="landing-hero-section">
+      <div class="container landing-hero-container">
         
-        <!-- Auth Tabs -->
-        <div id="auth-nav-tabs" class="auth-tabs">
-          <button id="tab-login" class="tab-btn active" data-tab="login" type="button">Entrar</button>
-          <button id="tab-register" class="tab-btn" data-tab="register" type="button">Criar Conta</button>
+        <div class="landing-hero-content">
+          <div class="hero-tag-badge">
+            <span class="pulse-dot"></span>
+            <span>A sua jornada de animes em um só lugar</span>
+          </div>
+
+          <h1 class="landing-hero-title">
+            Acompanhe cada temporada <span class="gradient-text">sem se perder e sem spoilers.</span>
+          </h1>
+
+          <p class="landing-hero-desc">
+            Organize os animes que você já assistiu, descubra o que vai ao ar hoje no Japão com a grade semanal de simulcast e mantenha sua fila de espera sempre atualizada.
+          </p>
+
+          <div class="landing-hero-actions">
+            <button id="btn-hero-cta" class="btn btn-primary btn-lg" type="button">
+              Começar Gratuitamente
+            </button>
+            <button id="btn-hero-login" class="btn btn-outline btn-lg" type="button">
+              Já Tenho uma Conta
+            </button>
+          </div>
+
+          <div class="hero-trust-row">
+            <div class="trust-item">
+              <span class="trust-check">✓</span>
+              <span>100% Gratuito para começar</span>
+            </div>
+            <div class="trust-item">
+              <span class="trust-check">✓</span>
+              <span>Grade de transmissão semanal</span>
+            </div>
+            <div class="trust-item">
+              <span class="trust-check">✓</span>
+              <span>Sem poluição de banners</span>
+            </div>
+          </div>
         </div>
 
-        <div id="auth-alert" class="alert hidden"></div>
-
-        <!-- Formulário de Login -->
-        <form id="form-login" class="auth-form">
-          <div class="form-group">
-            <label for="login-email">E-mail</label>
-            <div class="input-wrapper">
-              <span class="input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
-              </span>
-              <input type="email" id="login-email" class="form-control" placeholder="seu.email@exemplo.com" required autocomplete="email">
+        <!-- Hero Visual Showcase Deck -->
+        <div class="landing-hero-visual">
+          <div class="anime-poster-deck">
+            
+            <div class="deck-card deck-card-1">
+              <img src="https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-qQTzQnEJJ3oB.jpg" alt="Sousou no Frieren" loading="lazy">
+              <div class="deck-card-overlay">
+                <span class="deck-badge">★ 9.3</span>
+                <h4>Sousou no Frieren</h4>
+                <p>28 Episódios • Concluído</p>
+              </div>
             </div>
-          </div>
 
-          <div class="form-group">
-            <div class="label-with-action">
-              <label for="login-senha">Senha</label>
-              <button type="button" id="btn-forgot-password" class="btn-link text-xs" title="Recuperar acesso">Esqueceu a senha?</button>
+            <div class="deck-card deck-card-2">
+              <img src="https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx113415-LHBAeoZDIsnF.jpg" alt="Jujutsu Kaisen" loading="lazy">
+              <div class="deck-card-overlay">
+                <span class="deck-badge deck-badge-accent">Simulcast</span>
+                <h4>Jujutsu Kaisen</h4>
+                <p>Episódio 24</p>
+              </div>
             </div>
-            <div class="input-wrapper">
-              <span class="input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-              </span>
-              <input type="password" id="login-senha" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+
+            <div class="deck-card deck-card-3">
+              <img src="https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101922-WBsBl0ClmgYL.jpg" alt="Demon Slayer" loading="lazy">
+              <div class="deck-card-overlay">
+                <span class="deck-badge">★ 8.8</span>
+                <h4>Kimetsu no Yaiba</h4>
+                <p>Fila de Espera</p>
+              </div>
             </div>
+
           </div>
-
-          <button type="submit" id="btn-submit-login" class="btn btn-primary btn-block">
-            <span>Acessar Plataforma</span>
-          </button>
-        </form>
-
-        <!-- Formulário de Registro -->
-        <form id="form-register" class="auth-form hidden">
-          <div class="form-group">
-            <label for="register-nome">Nome Completo</label>
-            <div class="input-wrapper">
-              <span class="input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              </span>
-              <input type="text" id="register-nome" class="form-control" placeholder="Ex: Felipe Shida" required autocomplete="name">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="register-email">E-mail</label>
-            <div class="input-wrapper">
-              <span class="input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
-              </span>
-              <input type="email" id="register-email" class="form-control" placeholder="seu.email@exemplo.com" required autocomplete="email">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="register-role">Papel de Acesso (Role)</label>
-            <div class="input-wrapper">
-              <span class="input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              </span>
-              <select id="register-role" class="form-control">
-                <option value="usuario" selected>Usuário (Padrão)</option>
-                <option value="admin">Administrador (Moderação)</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="register-senha">Senha</label>
-            <div class="input-wrapper">
-              <span class="input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-              </span>
-              <input type="password" id="register-senha" class="form-control" placeholder="Mínimo 4 caracteres" required autocomplete="new-password">
-            </div>
-          </div>
-
-          <button type="submit" id="btn-submit-register" class="btn btn-primary btn-block">
-            <span>Criar Conta Gratuita</span>
-          </button>
-        </form>
-
-        <!-- Formulário de Esqueci Minha Senha -->
-        <form id="form-forgot" class="auth-form hidden">
-          <div class="auth-form-header">
-            <h3 class="auth-sub-title">Recuperação de Acesso</h3>
-            <p class="auth-sub-desc">
-              Informe seu e-mail cadastrado. Um link de redefinição com validade de <strong>30 minutos</strong> será enviado.
-            </p>
-          </div>
-
-          <div class="form-group">
-            <label for="forgot-email">E-mail Cadastrado</label>
-            <div class="input-wrapper">
-              <span class="input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
-              </span>
-              <input type="email" id="forgot-email" class="form-control" placeholder="seu.email@exemplo.com" required autocomplete="email">
-            </div>
-          </div>
-
-          <button type="submit" id="btn-submit-forgot" class="btn btn-primary btn-block">
-            <span>Enviar Link de Recuperação</span>
-          </button>
-
-          <div class="form-helper-center">
-            <button type="button" id="btn-forgot-back" class="btn-link">← Voltar para o Login</button>
-          </div>
-        </form>
-
-        <!-- Formulário de Redefinir Senha -->
-        <form id="form-reset" class="auth-form hidden">
-          <div class="auth-form-header">
-            <h3 class="auth-sub-title">Redefinição de Senha</h3>
-            <p id="reset-token-info" class="auth-sub-desc">Digite sua nova senha de acesso.</p>
-          </div>
-
-          <div class="form-group">
-            <label for="reset-nova-senha">Nova Senha</label>
-            <div class="input-wrapper">
-              <span class="input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-              </span>
-              <input type="password" id="reset-nova-senha" class="form-control" placeholder="Mínimo 4 caracteres" required autocomplete="new-password">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="reset-confirma-senha">Confirmar Nova Senha</label>
-            <div class="input-wrapper">
-              <span class="input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              </span>
-              <input type="password" id="reset-confirma-senha" class="form-control" placeholder="Repita a nova senha" required autocomplete="new-password">
-            </div>
-          </div>
-
-          <button type="submit" id="btn-submit-reset" class="btn btn-primary btn-block">
-            <span>Salvar Nova Senha</span>
-          </button>
-
-          <div class="form-helper-center">
-            <button type="button" id="btn-reset-back" class="btn-link">← Voltar para o Login</button>
-          </div>
-        </form>
-
-        <div class="auth-footer">
-          <p class="text-muted text-center text-xs">
-            AniTrack API SaaS • Powered by AniList GraphQL
-          </p>
         </div>
 
       </div>
+    </section>
 
-    </div>
+    <!-- 2. VALUE PROPOSITION: BEFORE VS AFTER -->
+    <section class="landing-comparison-section">
+      <div class="container">
+        
+        <div class="section-header-center">
+          <h2 class="section-title">Por que você precisa do AniTrack?</h2>
+          <p class="section-subtitle">A diferença entre desorganização com spoilers e uma experiência fluida.</p>
+        </div>
+
+        <div class="comparison-grid">
+          
+          <div class="comparison-card comparison-old">
+            <div class="comparison-header">
+              <span class="comparison-icon-danger">✕</span>
+              <h3 class="comparison-card-title">Como a maioria resolve hoje</h3>
+            </div>
+            <ul class="comparison-list">
+              <li>
+                <strong>Anotações perdidas no celular:</strong> Listas desestruturadas no bloco de notas ou conversas consigo mesmo no WhatsApp que somem com o tempo.
+              </li>
+              <li>
+                <strong>Spoilers nas redes sociais:</strong> Perder o dia exato de estreia do episódio da semana e levar spoilers no TikTok, Instagram e Twitter.
+              </li>
+              <li>
+                <strong>Esquecer em qual episódio parou:</strong> Assistir em vários aparelhos e nunca saber se parou no episódio 6, 7 ou 8.
+              </li>
+              <li>
+                <strong>Sites legados lentos:</strong> Plataformas antigas lotadas de anúncios intrusivos, com navegação truncada no celular.
+              </li>
+            </ul>
+          </div>
+
+          <div class="comparison-card comparison-new">
+            <div class="comparison-header">
+              <span class="comparison-icon-success">✓</span>
+              <h3 class="comparison-card-title">Com o AniTrack</h3>
+            </div>
+            <ul class="comparison-list">
+              <li>
+                <strong>Calendário Oficial de Simulcast:</strong> Grade organizada por dia da semana (segunda a domingo) para nunca mais se perder.
+              </li>
+              <li>
+                <strong>Três Listas Inteligentes:</strong> Separação prática entre o que você já assistiu, o que irá ver nas próximas férias e seus favoritos marcantes.
+              </li>
+              <li>
+                <strong>Controle Preciso de Episódios:</strong> Atualização rápida de progresso com notas de 1 a 10 e status em tempo real.
+              </li>
+              <li>
+                <strong>Design Rápido e Sem Poluição:</strong> Interface moderna com alternância entre temas Claro e Noturno, sem banners irritantes.
+              </li>
+            </ul>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 3. FEATURE SHOWCASE (COM BANNERS DE ANIME) -->
+    <section class="landing-features-section">
+      <div class="container">
+        
+        <div class="section-header-center">
+          <h2 class="section-title">Tudo o que você precisa em uma única plataforma</h2>
+          <p class="section-subtitle">Recursos desenhados especificamente para a rotina de quem assiste animes sazonais.</p>
+        </div>
+
+        <!-- Feature 1: Simulcast -->
+        <div class="feature-showcase-row">
+          <div class="feature-showcase-text">
+            <div class="feature-tag">Transmissão Simultânea</div>
+            <h3 class="feature-heading">Acompanhe a grade semanal direto do Japão</h3>
+            <p class="feature-paragraph">
+              Durante as viradas de temporada de inverno, primavera, verão e outono, acompanhe dezenas de lançamentos simultâneos sem estresse. Saiba quais animes estreiam hoje e consulte os horários previstos de exibição com um toque.
+            </p>
+            <ul class="feature-bullets">
+              <li>Visualização por dia da semana (Segunda a Domingo);</li>
+              <li>Destaque automático para os episódios que vão ao ar na data de hoje;</li>
+              <li>Contador regressivo para a estreia do próximo episódio.</li>
+            </ul>
+          </div>
+          <div class="feature-showcase-media">
+            <div class="feature-banner-frame">
+              <img src="https://s4.anilist.co/file/anilistcdn/media/anime/banner/151807-37yfQA3ym8PA.jpg" alt="Simulcast da Temporada" loading="lazy">
+              <div class="feature-banner-overlay">
+                <span class="feature-card-pill">🔥 Exibição Semanal</span>
+                <span class="feature-card-name">Solo Leveling • Novo Episódio</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 2: As 3 Listas -->
+        <div class="feature-showcase-row feature-showcase-reverse">
+          <div class="feature-showcase-text">
+            <div class="feature-tag">Organização Definitiva</div>
+            <h3 class="feature-heading">Gestão inteligente de Assistidos, Fila e Favoritos</h3>
+            <p class="feature-paragraph">
+              Chega de dúvidas sobre o que assistir no fim de semana. Mantenha seu histórico completo com barra de progresso de episódios vistos, monte a fila das próximas férias e destaque suas 5 maiores obras-primas.
+            </p>
+            <ul class="feature-bullets">
+              <li><strong>Assistidos:</strong> registre notas de 1 a 10, episódios vistos e status de conclusão;</li>
+              <li><strong>Irá Ver:</strong> organize sua fila de planejamento antes das estreias da temporada;</li>
+              <li><strong>Favoritos:</strong> crie uma galeria personalizada com seus títulos inesquecíveis.</li>
+            </ul>
+          </div>
+          <div class="feature-showcase-media">
+            <div class="feature-banner-frame">
+              <img src="https://s4.anilist.co/file/anilistcdn/media/anime/banner/154587-ivXNJ23SM1xB.jpg" alt="Frieren e Listas" loading="lazy">
+              <div class="feature-banner-overlay">
+                <span class="feature-card-pill">🍿 Histórico & Fila</span>
+                <span class="feature-card-name">Sousou no Frieren • Concluído (★ 10/10)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 3: Comunidade & Avaliações -->
+        <div class="feature-showcase-row">
+          <div class="feature-showcase-text">
+            <div class="feature-tag">Espaço Comunitário</div>
+            <h3 class="feature-heading">Compartilhe impressões, reviews e teorias</h3>
+            <p class="feature-paragraph">
+              Cada anime conta com uma área comunitária para você compartilhar suas notas, teorias sobre o final da temporada e impressões sinceras sobre a animação e trilha sonora.
+            </p>
+            <ul class="feature-bullets">
+              <li>Perfis personalizados com foto em alta definição;</li>
+              <li>Discussões organizadas diretamente na página de cada anime;</li>
+              <li>Badge VIP Dourada exclusiva para membros apoiadores.</li>
+            </ul>
+          </div>
+          <div class="feature-showcase-media">
+            <div class="feature-banner-frame">
+              <img src="https://s4.anilist.co/file/anilistcdn/media/anime/banner/16498-8jpFCOcDmneX.jpg" alt="Comunidade Attack on Titan" loading="lazy">
+              <div class="feature-banner-overlay">
+                <span class="feature-card-pill">💬 Discussão da Comunidade</span>
+                <span class="feature-card-name">Shingeki no Kyojin • Mais de 150 avaliações</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 4. PLAN COMPARISON: FREE VS OTAKU PRO -->
+    <section class="landing-pricing-section">
+      <div class="container">
+        
+        <div class="section-header-center">
+          <h2 class="section-title">Escolha o plano ideal para a sua rotina</h2>
+          <p class="section-subtitle">Comece gratuitamente ou desbloqueie capacidade irrestrita com o Otaku Pro.</p>
+        </div>
+
+        <div class="landing-pricing-grid">
+          
+          <!-- Plano Gratuito -->
+          <div class="pricing-plan-card">
+            <div class="plan-header">
+              <h3 class="plan-name">Plano Gratuito</h3>
+              <p class="plan-desc">Perfeito para quem está começando a organizar seus primeiros animes.</p>
+              <div class="plan-price">
+                <span class="plan-currency">R$</span>
+                <span class="plan-amount">0</span>
+                <span class="plan-period">/ para sempre</span>
+              </div>
+            </div>
+
+            <ul class="plan-features">
+              <li><span class="feat-check">✓</span> Até <strong>15 animes</strong> assistidos registrados</li>
+              <li><span class="feat-check">✓</span> Até <strong>10 animes</strong> na fila de espera (Irá Ver)</li>
+              <li><span class="feat-check">✓</span> Até <strong>5 animes</strong> favoritos na galeria</li>
+              <li><span class="feat-check">✓</span> Grade completa do calendário de simulcast</li>
+              <li><span class="feat-check">✓</span> Participação livre nos comentários</li>
+              <li><span class="feat-check">✓</span> Alternância de tema Claro e Noturno</li>
+            </ul>
+
+            <button class="btn btn-outline btn-block btn-open-register" type="button">
+              Criar Conta Grátis
+            </button>
+          </div>
+
+          <!-- Plano Otaku Pro -->
+          <div class="pricing-plan-card pricing-plan-featured">
+            <div class="featured-ribbon">⭐ MAIS RECOMENDADO</div>
+            
+            <div class="plan-header">
+              <h3 class="plan-name text-gold">Plano Otaku Pro</h3>
+              <p class="plan-desc">Liberdade total para os verdadeiros fãs de animes que não querem travas.</p>
+              <div class="plan-price">
+                <span class="plan-currency text-gold">R$</span>
+                <span class="plan-amount text-gold">12,90</span>
+                <span class="plan-period">/ mês</span>
+              </div>
+            </div>
+
+            <ul class="plan-features">
+              <li><span class="feat-check text-gold">★</span> <strong>Animes Assistidos Ilimitados</strong> (sem travas)</li>
+              <li><span class="feat-check text-gold">★</span> <strong>Fila de Espera Ilimitada</strong> para todas as temporadas</li>
+              <li><span class="feat-check text-gold">★</span> <strong>Favoritos Ilimitados</strong> com destaque pessoal</li>
+              <li><span class="feat-check text-gold">★</span> <strong>Foto de perfil personalizada</strong> em alta definição</li>
+              <li><span class="feat-check text-gold">★</span> <strong>Selo VIP Dourado ⭐ Otaku Pro</strong> nos comentários</li>
+              <li><span class="feat-check text-gold">★</span> Filtros avançados de simulcast por dia da semana</li>
+              <li><span class="feat-check text-gold">★</span> Cancelamento flexível a qualquer momento</li>
+            </ul>
+
+            <button class="btn btn-gold btn-block btn-open-register" type="button">
+              ⭐ Assinar Otaku Pro
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 5. FINAL CALL TO ACTION BANNER -->
+    <section class="landing-cta-banner">
+      <div class="container">
+        <div class="cta-banner-card">
+          <div class="cta-banner-content">
+            <h2 class="cta-banner-title">Pronto para transformar sua experiência com animes?</h2>
+            <p class="cta-banner-desc">Crie sua conta em menos de 1 minuto e tenha o calendário de simulcast na palma da sua mão.</p>
+            <button class="btn btn-primary btn-lg btn-open-register" type="button">
+              Criar Minha Conta Gratuita
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. LANDING FOOTER -->
+    <footer class="landing-footer">
+      <div class="container landing-footer-container">
+        <div class="footer-brand">
+          <div class="brand">
+            <div class="brand-icon-wrapper">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"></polygon></svg>
+            </div>
+            <span class="brand-title">AniTrack</span>
+          </div>
+          <p class="footer-tagline">O seu universo de animes e simulcast centralizado em uma plataforma moderna.</p>
+        </div>
+
+        <div class="footer-links">
+          <button type="button" class="footer-link-btn btn-open-login">Entrar</button>
+          <button type="button" class="footer-link-btn btn-open-register">Criar Conta</button>
+          <a href="#brand-logo" class="footer-link-btn">Voltar ao Topo</a>
+        </div>
+      </div>
+
+      <div class="container footer-bottom-row">
+        <p class="footer-copy">© 2026 AniTrack. Todos os direitos reservados. Feito para comunidades e fãs de animes.</p>
+      </div>
+    </footer>
+
   </section>
+
+  <!-- ================= AUTH MODAL (LOGIN / CADASTRO / RECUPERAÇÃO) ================= -->
+  <div id="auth-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-dialog-sm">
+      <div class="modal-content auth-modal-card">
+        
+        <div class="modal-header">
+          <h3 id="auth-modal-title" class="modal-title">Acessar o AniTrack</h3>
+          <button id="btn-close-auth-modal" class="modal-close-btn" type="button" title="Fechar">&times;</button>
+        </div>
+
+        <div class="modal-body auth-modal-body">
+          
+          <!-- Auth Tabs -->
+          <div id="auth-nav-tabs" class="auth-tabs">
+            <button id="tab-login" class="tab-btn active" data-tab="login" type="button">Entrar</button>
+            <button id="tab-register" class="tab-btn" data-tab="register" type="button">Criar Conta</button>
+          </div>
+
+          <div id="auth-alert" class="alert hidden"></div>
+
+          <!-- Formulário de Login -->
+          <form id="form-login" class="auth-form">
+            <div class="form-group">
+              <label for="login-email">E-mail</label>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+                </span>
+                <input type="email" id="login-email" class="form-control" placeholder="seu.email@exemplo.com" required autocomplete="email">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div class="label-with-action">
+                <label for="login-senha">Senha</label>
+                <button type="button" id="btn-forgot-password" class="btn-link text-xs" title="Recuperar acesso">Esqueceu a senha?</button>
+              </div>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                </span>
+                <input type="password" id="login-senha" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+              </div>
+            </div>
+
+            <button type="submit" id="btn-submit-login" class="btn btn-primary btn-block">
+              <span>Entrar na Plataforma</span>
+            </button>
+          </form>
+
+          <!-- Formulário de Registro -->
+          <form id="form-register" class="auth-form hidden">
+            <div class="form-group">
+              <label for="register-nome">Nome Completo</label>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </span>
+                <input type="text" id="register-nome" class="form-control" placeholder="Ex: Lucas Kuro" required autocomplete="name">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="register-email">E-mail</label>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+                </span>
+                <input type="email" id="register-email" class="form-control" placeholder="seu.email@exemplo.com" required autocomplete="email">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="register-role">Papel de Acesso (Role)</label>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </span>
+                <select id="register-role" class="form-control">
+                  <option value="usuario" selected>Usuário (Padrão)</option>
+                  <option value="admin">Administrador (Moderação)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="register-senha">Senha</label>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                </span>
+                <input type="password" id="register-senha" class="form-control" placeholder="Mínimo 4 caracteres" required autocomplete="new-password">
+              </div>
+            </div>
+
+            <button type="submit" id="btn-submit-register" class="btn btn-primary btn-block">
+              <span>Criar Minha Conta</span>
+            </button>
+          </form>
+
+          <!-- Formulário de Esqueci Minha Senha -->
+          <form id="form-forgot" class="auth-form hidden">
+            <div class="auth-form-header">
+              <h4 class="auth-sub-title">Recuperação de Acesso</h4>
+              <p class="auth-sub-desc">
+                Informe seu e-mail cadastrado. Um link de redefinição com validade de <strong>30 minutos</strong> será enviado.
+              </p>
+            </div>
+
+            <div class="form-group">
+              <label for="forgot-email">E-mail Cadastrado</label>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+                </span>
+                <input type="email" id="forgot-email" class="form-control" placeholder="seu.email@exemplo.com" required autocomplete="email">
+              </div>
+            </div>
+
+            <button type="submit" id="btn-submit-forgot" class="btn btn-primary btn-block">
+              <span>Enviar Link de Recuperação</span>
+            </button>
+
+            <div class="form-helper-center">
+              <button type="button" id="btn-forgot-back" class="btn-link">← Voltar para o Login</button>
+            </div>
+          </form>
+
+          <!-- Formulário de Redefinir Senha -->
+          <form id="form-reset" class="auth-form hidden">
+            <div class="auth-form-header">
+              <h4 class="auth-sub-title">Redefinição de Senha</h4>
+              <p id="reset-token-info" class="auth-sub-desc">Digite sua nova senha de acesso.</p>
+            </div>
+
+            <div class="form-group">
+              <label for="reset-nova-senha">Nova Senha</label>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                </span>
+                <input type="password" id="reset-nova-senha" class="form-control" placeholder="Mínimo 4 caracteres" required autocomplete="new-password">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="reset-confirma-senha">Confirmar Nova Senha</label>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </span>
+                <input type="password" id="reset-confirma-senha" class="form-control" placeholder="Repita a nova senha" required autocomplete="new-password">
+              </div>
+            </div>
+
+            <button type="submit" id="btn-submit-reset" class="btn btn-primary btn-block">
+              <span>Salvar Nova Senha</span>
+            </button>
+
+            <div class="form-helper-center">
+              <button type="button" id="btn-reset-back" class="btn-link">← Voltar para o Login</button>
+            </div>
+          </form>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   <!-- ================= VIEW 2: MAIN APP (CATALOG, SIMULCAST, LISTS) ================= -->
   <main id="app-view" class="view app-section hidden">
@@ -347,7 +640,7 @@
             <span id="capacity-badge" class="capacity-status-badge">Carregando capacidades...</span>
           </div>
           <h2 id="catalog-heading" class="catalog-heading">Explorar Animes</h2>
-          <p id="catalog-subheading" class="catalog-subheading">Catálogo de obras sincronizado via AniList GraphQL API</p>
+          <p id="catalog-subheading" class="catalog-subheading">Descubra novos títulos, clássicos e lançamentos da temporada</p>
         </div>
 
         <!-- Controls Bar: Search, Filters & Sorters -->
@@ -396,7 +689,7 @@
       <!-- Loading State -->
       <div id="loading-state" class="loading-state">
         <div class="spinner"></div>
-        <p id="loading-text">Consultando a API do AniList e seus registros...</p>
+        <p id="loading-text">Carregando catálogo de animes...</p>
       </div>
 
       <!-- Empty State -->
@@ -617,7 +910,7 @@
               <!-- Upload controls (Visible for owner) -->
               <div id="profile-photo-controls" class="profile-photo-controls hidden">
                 <input type="file" id="input-profile-photo" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden">
-                <label for="input-profile-photo" id="lbl-upload-photo" class="btn btn-sm btn-outline" title="Enviar nova foto para o MinIO S3">
+                <label for="input-profile-photo" id="lbl-upload-photo" class="btn btn-sm btn-outline" title="Enviar nova foto de perfil">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
                   <span>Alterar Foto</span>
                 </label>
@@ -737,7 +1030,7 @@
             </div>
             <div class="pricing-note">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              <span>Cancelamento a qualquer momento • Checkout Oficial Stripe</span>
+              <span>Cancelamento a qualquer momento • Pagamento Seguro</span>
             </div>
           </div>
 
@@ -769,8 +1062,8 @@
             <div class="premium-benefit-card">
               <div class="benefit-icon">🖼️</div>
               <div class="benefit-content">
-                <h4 class="benefit-title">Upload de Avatar em Alta Resolução</h4>
-                <p class="benefit-desc">Envie sua imagem de perfil favorita armazenada com segurança no Object Storage S3 MinIO.</p>
+                <h4 class="benefit-title">Foto de Perfil Personalizada</h4>
+                <p class="benefit-desc">Envie sua imagem de perfil favorita em alta resolução para destacar sua presença na comunidade.</p>
               </div>
             </div>
           </div>
@@ -794,8 +1087,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- JavaScript Modules -->
-  <script type="module" src="js/api.js?v=3.0.0"></script>
-  <script type="module" src="js/auth.js?v=3.0.0"></script>
-  <script type="module" src="js/app.js?v=3.0.0"></script>
+  <script type="module" src="js/api.js?v=4.0.0"></script>
+  <script type="module" src="js/auth.js?v=4.0.0"></script>
+  <script type="module" src="js/app.js?v=4.0.0"></script>
 </body>
 </html>

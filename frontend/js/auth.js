@@ -10,6 +10,7 @@ const authView = document.getElementById('auth-view');
 const appView = document.getElementById('app-view');
 const navViews = document.getElementById('nav-views');
 const userNav = document.getElementById('user-nav');
+const guestNav = document.getElementById('guest-nav');
 const navUserName = document.getElementById('nav-user-name');
 const navUserRole = document.getElementById('nav-user-role');
 const navUserPremium = document.getElementById('nav-user-premium');
@@ -18,10 +19,18 @@ const navUserAvatar = document.getElementById('nav-user-avatar');
 const navAvatarIcon = document.getElementById('nav-avatar-icon');
 const btnLogout = document.getElementById('btn-logout');
 
+// Modal de Autenticação (Pop-up)
+const authModal = document.getElementById('auth-modal');
+const btnCloseAuthModal = document.getElementById('btn-close-auth-modal');
+const btnHeaderLogin = document.getElementById('btn-header-login');
+const btnHeaderRegister = document.getElementById('btn-header-register');
+const btnHeroCta = document.getElementById('btn-hero-cta');
+const btnHeroLogin = document.getElementById('btn-hero-login');
+
 // Tema
 const btnThemeToggle = document.getElementById('btn-theme-toggle');
 
-// Modal Otaku Pro (Stripe)
+// Modal Otaku Pro
 const premiumModal = document.getElementById('premium-modal');
 const btnClosePremiumModal = document.getElementById('btn-close-premium-modal');
 const btnCancelPremiumModal = document.getElementById('btn-cancel-premium-modal');
@@ -133,6 +142,25 @@ export function switchTab(tab) {
   }
 }
 
+export function openAuthModal(tab = 'login') {
+  if (authModal) {
+    authModal.classList.remove('hidden');
+    switchTab(tab);
+    setTimeout(() => {
+      if (tab === 'login') {
+        loginEmail?.focus();
+      } else if (tab === 'register') {
+        registerNome?.focus();
+      }
+    }, 50);
+  }
+}
+
+export function closeAuthModal() {
+  authModal?.classList.add('hidden');
+  hideAlert();
+}
+
 // ============================================================================
 // 3. ATUALIZAÇÃO DA INTERFACE & SESSÃO
 // ============================================================================
@@ -141,11 +169,14 @@ export function showAuthView() {
   appView?.classList.add('hidden');
   navViews?.classList.add('hidden');
   userNav?.classList.add('hidden');
-  switchTab('login');
+  guestNav?.classList.remove('hidden');
+  closeAuthModal();
 }
 
 export function showAppView(user) {
+  closeAuthModal();
   authView?.classList.add('hidden');
+  guestNav?.classList.add('hidden');
   appView?.classList.remove('hidden');
   navViews?.classList.remove('hidden');
   userNav?.classList.remove('hidden');
@@ -298,7 +329,7 @@ async function handleLogout() {
 }
 
 // ============================================================================
-// 5. MODAL OTAKU PRO & STRIPE CHECKOUT
+// 5. MODAL OTAKU PRO & CHECKOUT SEGURO
 // ============================================================================
 export function openPremiumModal() {
   premiumModal?.classList.remove('hidden');
@@ -311,7 +342,7 @@ export function closePremiumModal() {
 async function startStripeCheckout() {
   if (!btnConfirmCheckout) return;
   btnConfirmCheckout.disabled = true;
-  btnConfirmCheckout.innerHTML = '<span class="spinner-sm"></span> Conectando ao Stripe...';
+  btnConfirmCheckout.innerHTML = '<span class="spinner-sm"></span> Conectando ao checkout seguro...';
 
   try {
     const res = await api.createStripeCheckout();
@@ -330,6 +361,25 @@ async function startStripeCheckout() {
 // ============================================================================
 // 6. EVENT LISTENERS
 // ============================================================================
+// Modal de Autenticação (Entrar / Criar Conta)
+btnHeaderLogin?.addEventListener('click', () => openAuthModal('login'));
+btnHeaderRegister?.addEventListener('click', () => openAuthModal('register'));
+btnHeroCta?.addEventListener('click', () => openAuthModal('register'));
+btnHeroLogin?.addEventListener('click', () => openAuthModal('login'));
+
+document.querySelectorAll('.btn-open-login').forEach((btn) => {
+  btn.addEventListener('click', () => openAuthModal('login'));
+});
+
+document.querySelectorAll('.btn-open-register').forEach((btn) => {
+  btn.addEventListener('click', () => openAuthModal('register'));
+});
+
+btnCloseAuthModal?.addEventListener('click', closeAuthModal);
+authModal?.addEventListener('click', (e) => {
+  if (e.target === authModal) closeAuthModal();
+});
+
 tabLogin?.addEventListener('click', () => switchTab('login'));
 tabRegister?.addEventListener('click', () => switchTab('register'));
 btnForgotPassword?.addEventListener('click', () => switchTab('forgot'));
@@ -353,6 +403,7 @@ premiumModal?.addEventListener('click', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    if (authModal && !authModal.classList.contains('hidden')) closeAuthModal();
     if (premiumModal && !premiumModal.classList.contains('hidden')) closePremiumModal();
   }
 });
@@ -369,7 +420,7 @@ export async function initAuth() {
 
   const urlParams = new URLSearchParams(window.location.search);
 
-  // 1. Checa retorno de pagamento Stripe
+  // 1. Checa retorno de pagamento
   const paymentStatus = urlParams.get('payment');
   if (paymentStatus) {
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -379,7 +430,7 @@ export async function initAuth() {
       }, 500);
     } else if (paymentStatus === 'cancel') {
       setTimeout(() => {
-        alert('O checkout do Stripe foi cancelado. Você pode assinar o Otaku Pro a qualquer momento.');
+        alert('O processo de pagamento foi cancelado. Você pode assinar o Otaku Pro a qualquer momento.');
       }, 500);
     }
   }
@@ -389,7 +440,8 @@ export async function initAuth() {
   if (resetToken) {
     window.history.replaceState({}, document.title, window.location.pathname);
     showAuthView();
-    showAlert('Verificando token de recuperação...', 'info');
+    openAuthModal('reset');
+    showAlert('Verificando link de recuperação...', 'info');
 
     try {
       const check = await api.verifyResetToken(resetToken);

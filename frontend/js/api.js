@@ -282,7 +282,7 @@ export const api = {
     });
   },
 
-  // ===== PERFIL DO USUÁRIO & MINIO =====
+  // ===== PERFIL DO USUÁRIO =====
   async getProfile(userId = 'me') {
     return this.request(`/profile/${userId}`);
   },
@@ -301,7 +301,7 @@ export const api = {
     });
   },
 
-  // ===== STRIPE (PLANO OTAKU PRO) =====
+  // ===== PLANO OTAKU PRO & ASSINATURA =====
   async createStripeCheckout() {
     return this.request('/stripe/create-checkout-session', {
       method: 'POST'
