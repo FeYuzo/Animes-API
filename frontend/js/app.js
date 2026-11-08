@@ -69,6 +69,8 @@ const btnActionPlantowatch = document.getElementById('btn-action-plantowatch');
 const lblActionPlantowatch = document.getElementById('lbl-action-plantowatch');
 const btnActionFavorite = document.getElementById('btn-action-favorite');
 const lblActionFavorite = document.getElementById('lbl-action-favorite');
+const btnActionPin = document.getElementById('btn-action-pin');
+const lblActionPin = document.getElementById('lbl-action-pin');
 const btnActionTrailer = document.getElementById('btn-action-trailer');
 const formAddComment = document.getElementById('form-add-comment');
 const commentText = document.getElementById('comment-text');
@@ -211,7 +213,7 @@ async function refreshUserData() {
 
 function updateCapacityBadge() {
   if (!capacityBadge) return;
-  const isPro = currentUser?.is_premium;
+  const isPro = Boolean(currentUser?.is_premium || currentUser?.role === 'admin');
   const pinnedCount = favoritesState.filter((f) => f.fixado).length;
 
   if (isPro) {
@@ -498,12 +500,12 @@ function renderAnimeCards(list, isSimulcast = false, contextType = null) {
       `;
     }
 
-    // Botão de Fixar no Perfil (disponível quando favoritado)
-    const pinBtnHtml = isFav ? `
-      <button class="quick-action-btn btn-quick-pin ${isPinned ? 'active-pin' : ''}" title="${isPinned ? 'Desfixar do perfil' : 'Fixar no perfil (📌)'}" data-id="${animeId}">
+    // Botão de Fixar no Perfil (SEMPRE visível em todos os cards)
+    const pinBtnHtml = `
+      <button class="quick-action-btn btn-quick-pin ${isPinned ? 'active-pin' : ''}" title="${isPinned ? 'Desfixar do perfil (📌)' : 'Fixar no topo do perfil (📌)'}" data-id="${animeId}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="${isPinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a1 1 0 0 0 0-2H8a1 1 0 0 0 0 2h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>
       </button>
-    ` : '';
+    `;
 
     card.innerHTML = `
       <div class="anime-card-poster-wrapper">
@@ -561,7 +563,7 @@ function renderAnimeCards(list, isSimulcast = false, contextType = null) {
     if (btnPin) {
       btnPin.addEventListener('click', async (e) => {
         e.stopPropagation();
-        await handleTogglePinFavorite(animeId);
+        await handleTogglePinFavorite(animeId, item);
       });
     }
 
@@ -694,13 +696,21 @@ async function openAnimeDetailModal(animeId) {
 
 function updateModalActionButtons(anime) {
   const animeId = anime.id || anime.anime_id;
-  const isFav = favoritesState.some((f) => f.anime_id === animeId);
+  const favItem = favoritesState.find((f) => f.anime_id === animeId);
+  const isFav = Boolean(favItem);
+  const isPinned = Boolean(favItem?.fixado);
   const watchedData = watchedState.find((w) => w.anime_id === animeId);
   const isPlan = planToWatchState.some((p) => p.anime_id === animeId);
 
   lblActionFavorite.textContent = isFav ? 'Favoritado ❤️' : 'Favoritar';
   lblActionPlantowatch.textContent = isPlan ? 'Na Fila 📋' : 'Adicionar à Fila (Irá Ver)';
   lblActionWatched.textContent = watchedData ? `Assistido (${watchedData.episodios_vistos || 0} eps)` : 'Marcar como Assistido';
+
+  if (lblActionPin) {
+    lblActionPin.textContent = isPinned ? 'Fixado no Perfil 📌' : 'Fixar no Perfil 📌';
+    btnActionPin?.classList.toggle('btn-primary', isPinned);
+    btnActionPin?.classList.toggle('btn-outline', !isPinned);
+  }
 }
 
 function closeAnimeDetailModal() {
@@ -793,6 +803,13 @@ function renderComments(comments) {
 btnActionFavorite?.addEventListener('click', async () => {
   if (!activeAnimeForModal) return;
   await toggleFavorite(activeAnimeForModal);
+  updateModalActionButtons(activeAnimeForModal);
+});
+
+btnActionPin?.addEventListener('click', async () => {
+  if (!activeAnimeForModal) return;
+  const animeId = activeAnimeForModal.id || activeAnimeForModal.anime_id;
+  await handleTogglePinFavorite(animeId, activeAnimeForModal);
   updateModalActionButtons(activeAnimeForModal);
 });
 
@@ -915,8 +932,17 @@ async function openProfileModal() {
     editProfileBio.value = profile.bio || '';
     editBioCounter.textContent = `${(profile.bio || '').length}/500`;
 
-    const isPro = Boolean(profile.is_premium);
+    const isPro = Boolean(profile.is_premium || profile.role === 'admin' || currentUser?.role === 'admin');
     profilePremiumBadge.classList.toggle('hidden', !isPro);
+
+    // Sincroniza cache local do usuário com dados atualizados do perfil
+    if (currentUser) {
+      currentUser.is_premium = isPro;
+      currentUser.role = profile.role || currentUser.role;
+      currentUser.foto_perfil = profile.foto_perfil;
+      currentUser.banner_perfil = profile.banner_perfil;
+      api.setUser(currentUser);
+    }
 
     // 1. Atualização do Banner do Perfil
     if (profile.banner_url) {
@@ -1014,6 +1040,22 @@ async function openProfileModal() {
       }
     }
 
+    // Seletor rápido de favoritos para fixar no perfil
+    const unpinnedFavorites = (profile.favoritos || []).filter((f) => !f.fixado);
+    const selectPinFav = document.getElementById('select-favorite-to-pin');
+    const pinSelectorRow = document.getElementById('profile-pin-selector-row');
+    if (selectPinFav && pinSelectorRow) {
+      if (unpinnedFavorites.length > 0 && pinnedCount < maxPinned) {
+        pinSelectorRow.classList.remove('hidden');
+        selectPinFav.innerHTML = `
+          <option value="">Selecione um anime favorito para fixar (${pinnedCount}/${maxPinned})...</option>
+          ${unpinnedFavorites.map((f) => `<option value="${f.anime_id}">${f.titulo}</option>`).join('')}
+        `;
+      } else {
+        pinSelectorRow.classList.add('hidden');
+      }
+    }
+
     // Promo box do Otaku Pro (esconde se já for Pro)
     document.getElementById('profile-pro-promo')?.classList.toggle('hidden', isPro);
 
@@ -1027,12 +1069,23 @@ function closeProfileModal() {
 }
 
 // Alternar fixação de anime favorito (📌)
-async function handleTogglePinFavorite(animeId) {
+async function handleTogglePinFavorite(animeId, animeData = null) {
   try {
-    const res = await api.togglePinFavorite(animeId);
+    const payload = {};
+    if (animeData) {
+      payload.titulo = animeData.titulo || animeData.title || animeData.titulo_romaji;
+      payload.poster_url = animeData.poster_url || animeData.poster_path;
+    }
+    const res = await api.togglePinFavorite(animeId, payload);
     showToast(res.message || 'Destaque de anime atualizado no perfil!', 'success');
     await refreshUserData();
     reRenderCurrentView();
+    if (activeAnimeForModal && (activeAnimeForModal.id === animeId || activeAnimeForModal.anime_id === animeId)) {
+      updateModalActionButtons(activeAnimeForModal);
+    }
+    if (profileModal && !profileModal.classList.contains('hidden')) {
+      await openProfileModal();
+    }
   } catch (err) {
     if (err.code === 'PREMIUM_REQUIRED') {
       openPremiumModal();
@@ -1048,7 +1101,7 @@ inputProfilePhoto?.addEventListener('change', async () => {
   const file = inputProfilePhoto.files[0];
   if (!file) return;
 
-  const isPro = Boolean(currentUser?.is_premium);
+  const isPro = Boolean(currentUser?.is_premium || currentUser?.role === 'admin');
 
   // Verificação no Frontend: GIFs animados requerem Otaku Pro
   if (file.type === 'image/gif' && !isPro) {
@@ -1087,23 +1140,27 @@ inputProfilePhoto?.addEventListener('change', async () => {
 });
 
 // Abertura e Upload do Banner de Perfil (Exclusivo Otaku Pro)
-btnUploadBanner?.addEventListener('click', () => {
-  const isPro = Boolean(currentUser?.is_premium);
+btnUploadBanner?.addEventListener('click', (e) => {
+  const isPro = Boolean(currentUser?.is_premium || currentUser?.role === 'admin');
   if (!isPro) {
+    e.preventDefault();
     showToast('A customização do banner com imagens e GIFs é exclusiva do Plano Otaku Pro!', 'info');
     openPremiumModal();
     return;
   }
-  inputProfileBanner?.click();
+  if (btnUploadBanner.tagName !== 'LABEL') {
+    inputProfileBanner?.click();
+  }
 });
 
 inputProfileBanner?.addEventListener('change', async () => {
   const file = inputProfileBanner.files[0];
   if (!file) return;
 
-  const isPro = Boolean(currentUser?.is_premium);
+  const isPro = Boolean(currentUser?.is_premium || currentUser?.role === 'admin');
   if (!isPro) {
     inputProfileBanner.value = '';
+    showToast('A customização do banner com imagens e GIFs é exclusiva do Plano Otaku Pro!', 'info');
     openPremiumModal();
     return;
   }
@@ -1128,6 +1185,7 @@ inputProfileBanner?.addEventListener('change', async () => {
   } catch (err) {
     if (err.code === 'PREMIUM_REQUIRED') {
       openPremiumModal();
+      showToast(err.message, 'info');
     } else {
       showToast(`Erro no upload do banner: ${err.message}`, 'error');
     }
@@ -1153,7 +1211,7 @@ btnRemoveBanner?.addEventListener('click', async () => {
 
 // Exportação da Biblioteca em JSON (Diferencial Otaku Pro)
 btnExportLibrary?.addEventListener('click', async () => {
-  const isPro = Boolean(currentUser?.is_premium);
+  const isPro = Boolean(currentUser?.is_premium || currentUser?.role === 'admin');
   if (!isPro) {
     showToast('A exportação completa da biblioteca em JSON é exclusiva para assinantes Otaku Pro!', 'info');
     openPremiumModal();
@@ -1181,18 +1239,41 @@ btnExportLibrary?.addEventListener('click', async () => {
     }
   }
 });
-      updateNavUserAvatar(res.foto_url);
-      profileAvatarImg.src = `${res.foto_url}?t=${Date.now()}`;
-      profileAvatarImg.classList.remove('hidden');
-      profileAvatarFallback.classList.add('hidden');
-    }
-  } catch (err) {
-    showToast(`Erro no upload: ${err.message}`, 'error');
-  } finally {
-    uploadPhotoSpinner.classList.add('hidden');
-    inputProfilePhoto.value = '';
+
+// Fixar anime a partir do seletor rápido no perfil
+document.getElementById('btn-pin-from-select')?.addEventListener('click', async () => {
+  const selectPinFav = document.getElementById('select-favorite-to-pin');
+  const animeId = parseInt(selectPinFav?.value, 10);
+  if (!animeId) {
+    showToast('Selecione um anime para fixar no perfil.', 'info');
+    return;
   }
+  const favObj = favoritesState.find((f) => f.anime_id === animeId);
+  await handleTogglePinFavorite(animeId, favObj);
 });
+
+// Alternar status Otaku Pro para testes e demonstração
+async function handleToggleProPlan() {
+  try {
+    const res = await api.toggleProStatus();
+    showToast(res.message, 'success');
+    if (currentUser) {
+      currentUser.is_premium = res.is_premium;
+      api.setUser(currentUser);
+    }
+    await refreshUserData();
+    reRenderCurrentView();
+    if (profileModal && !profileModal.classList.contains('hidden')) {
+      await openProfileModal();
+    }
+    closePremiumModal();
+  } catch (err) {
+    showToast(`Erro ao alternar plano: ${err.message}`, 'error');
+  }
+}
+
+document.getElementById('btn-toggle-pro-mode')?.addEventListener('click', handleToggleProPlan);
+document.getElementById('btn-instant-pro-activate')?.addEventListener('click', handleToggleProPlan);
 
 btnToggleEditProfile?.addEventListener('click', () => {
   formEditProfile.classList.toggle('hidden');

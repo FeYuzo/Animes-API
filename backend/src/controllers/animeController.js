@@ -17,8 +17,8 @@ function getClientIp(req) {
 async function checkUserIsPremium(userId) {
   if (!userId) return false;
   try {
-    const [rows] = await pool.query('SELECT is_premium FROM usuarios WHERE id = ?', [userId]);
-    return rows.length > 0 && Boolean(rows[0].is_premium);
+    const [rows] = await pool.query('SELECT is_premium, role FROM usuarios WHERE id = ?', [userId]);
+    return rows.length > 0 && (Boolean(rows[0].is_premium) || rows[0].role === 'admin');
   } catch (err) {
     console.warn('[AnimeController] Erro ao checar status premium:', err.message);
     return false;
@@ -700,17 +700,80 @@ export async function togglePinFavorite(req, res) {
     }
 
     const [favRows] = await pool.query(
-      'SELECT id, anime_id, titulo, fixado FROM animes_favoritos WHERE usuario_id = ? AND (id = ? OR anime_id = ?)',
+      'SELECT id, anime_id, titulo, poster_url, fixado FROM animes_favoritos WHERE usuario_id = ? AND (id = ? OR anime_id = ?)',
       [userId, targetId, targetId]
     );
 
+    const isPremium = await checkUserIsPremium(userId);
+    const maxAllowed = isPremium ? 6 : 2;
+
     if (favRows.length === 0) {
-      return res.status(404).json({ error: 'Anime favorito não encontrado na sua lista.' });
+      // O anime ainda não estava em favoritos: adiciona e fixa diretamente
+      const titulo = req.body.titulo || req.body.title || `Anime #${targetId}`;
+      const posterUrl = req.body.poster_url || req.body.poster_path || null;
+
+      const [countRows] = await pool.query(
+        'SELECT COUNT(*) as total FROM animes_favoritos WHERE usuario_id = ? AND fixado = TRUE',
+        [userId]
+      );
+      const currentlyPinned = countRows[0]?.total || 0;
+
+      if (!isPremium && currentlyPinned >= 2) {
+        logAuditEvent({
+          usuario_id: userId,
+          acao: 'tentativa_acesso_negada',
+          ip: clientIp,
+          detalhes: {
+            motivo: 'limite_animes_fixados_plano_free',
+            limite: 2,
+            atual: currentlyPinned
+          }
+        });
+
+        return res.status(403).json({
+          error: 'Usuários do Plano Gratuito podem fixar até 2 animes favoritos no perfil. Assine o Plano Otaku Pro para fixar até 6 animes!',
+          code: 'PREMIUM_REQUIRED',
+          limit: 2,
+          current: currentlyPinned,
+          is_premium: false
+        });
+      }
+
+      if (currentlyPinned >= maxAllowed) {
+        return res.status(400).json({
+          error: `Você já atingiu o limite de ${maxAllowed} animes fixados no perfil.`,
+          code: 'PIN_LIMIT_REACHED',
+          limit: maxAllowed
+        });
+      }
+
+      const [insertResult] = await pool.query(
+        'INSERT INTO animes_favoritos (usuario_id, anime_id, titulo, poster_url, fixado) VALUES (?, ?, ?, ?, TRUE)',
+        [userId, targetId, titulo, posterUrl]
+      );
+
+      logAuditEvent({
+        usuario_id: userId,
+        acao: 'anime_adicionado_favorito_e_fixado',
+        ip: clientIp,
+        detalhes: {
+          anime_id: targetId,
+          titulo,
+          fixado: true
+        }
+      });
+
+      return res.json({
+        success: true,
+        message: 'Anime adicionado aos favoritos e fixado no topo do seu perfil!',
+        id: insertResult.insertId,
+        anime_id: targetId,
+        fixado: true,
+        favoritado: true
+      });
     }
 
     const currentFav = favRows[0];
-    const isPremium = await checkUserIsPremium(userId);
-    const maxAllowed = isPremium ? 6 : 2;
 
     const newFixadoState = req.body.fixado !== undefined ? Boolean(req.body.fixado) : !Boolean(currentFav.fixado);
 

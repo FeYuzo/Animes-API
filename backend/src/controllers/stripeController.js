@@ -8,9 +8,28 @@ import { logAuditEvent } from '../services/auditService.js';
  */
 export async function createCheckoutSession(req, res) {
   try {
-    if (!stripe) {
-      return res.status(500).json({
-        error: 'Serviço de pagamentos (Stripe) não configurado no servidor. Configure STRIPE_SECRET_KEY no arquivo .env.'
+    const userId = req.user.id;
+    const userEmail = req.user.email;
+    const userName = req.user.nome;
+    const appUrl = (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+
+    const isPlaceholderKey = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.includes('placeholder');
+    if (!stripe || isPlaceholderKey) {
+      console.log(`[Stripe] Modo de simulação/teste detectado para o usuário ${userId}. Ativando Otaku Pro imediatamente...`);
+      await pool.query('UPDATE usuarios SET is_premium = TRUE WHERE id = ?', [userId]);
+
+      logAuditEvent({
+        usuario_id: userId,
+        acao: 'simulacao_checkout_sucesso',
+        ip: req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || req.ip,
+        detalhes: { modo: 'teste_placeholder_auto_upgrade' }
+      });
+
+      return res.json({
+        success: true,
+        testMode: true,
+        message: 'Modo de teste: Sua conta foi atualizada imediatamente para o Plano Otaku Pro!',
+        url: `${appUrl}/?payment=success`
       });
     }
 
@@ -20,13 +39,6 @@ export async function createCheckoutSession(req, res) {
         error: 'Preço do plano não configurado. Adicione STRIPE_PRICE_ID no arquivo .env.'
       });
     }
-
-    const userId = req.user.id;
-    const userEmail = req.user.email;
-    const userName = req.user.nome;
-
-    // Obtém a URL base da aplicação para os redirecionamentos de sucesso e cancelamento
-    const appUrl = (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
 
     const sessionParams = {
       customer_email: userEmail,

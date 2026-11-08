@@ -2524,11 +2524,43 @@ button, input, select, textarea {
   color: var(--text-muted);
 }
 
-/* Botão de Exportação da Biblioteca */
+/* Botão de Exportação da Biblioteca & Ações Extras */
 .profile-extra-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
   margin-bottom: 1.25rem;
+}
+
+.btn-pro-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-color: rgba(99, 102, 241, 0.4);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.btn-pro-toggle:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: var(--primary);
+}
+
+.profile-pin-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  background: var(--bg-surface-2, rgba(255, 255, 255, 0.03));
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.75rem;
+}
+
+.profile-pin-selector-row select {
+  flex: 1;
 }
 
 .btn-export-action {

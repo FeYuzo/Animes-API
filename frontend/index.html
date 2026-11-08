@@ -585,6 +585,11 @@
             <span id="lbl-action-favorite">Favoritar</span>
           </button>
 
+          <button id="btn-action-pin" class="btn btn-sm btn-outline" type="button" title="Fixar ou remover destaque no perfil">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a1 1 0 0 0 0-2H8a1 1 0 0 0 0 2h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>
+            <span id="lbl-action-pin">Fixar no Perfil 📌</span>
+          </button>
+
           <a id="btn-action-trailer" class="btn btn-sm btn-outline hidden" href="#" target="_blank" rel="noopener noreferrer">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
             <span>Trailer</span>
@@ -741,10 +746,10 @@
             
             <div id="profile-banner-controls" class="profile-banner-controls hidden">
               <input type="file" id="input-profile-banner" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden">
-              <button type="button" id="btn-upload-banner" class="btn btn-sm btn-banner-action" title="Personalizar Banner do Perfil">
+              <label for="input-profile-banner" id="btn-upload-banner" class="btn btn-sm btn-banner-action" title="Personalizar Banner do Perfil (Imagens e GIFs)">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
                 <span id="lbl-banner-btn-text">Personalizar Banner ⭐</span>
-              </button>
+              </label>
               <button type="button" id="btn-remove-banner" class="btn btn-sm btn-banner-action-danger hidden" title="Remover Banner Personalizado">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 <span>Remover</span>
@@ -860,16 +865,30 @@
               </div>
               <span id="profile-pinned-badge" class="badge-pinned-capacity">0/2 fixados</span>
             </div>
+
+            <!-- Seletor Rápido para Fixar a partir dos Favoritos -->
+            <div id="profile-pin-selector-row" class="profile-pin-selector-row hidden">
+              <select id="select-favorite-to-pin" class="form-control form-control-sm">
+                <option value="">Selecione um favorito para fixar...</option>
+              </select>
+              <button type="button" id="btn-pin-from-select" class="btn btn-sm btn-outline">
+                <span>📌 Fixar no Perfil</span>
+              </button>
+            </div>
+
             <div id="profile-pinned-list" class="profile-pinned-list">
               <!-- Renderizado via app.js -->
             </div>
           </div>
 
-          <!-- Ações Extras do Perfil (Backup Otaku Pro) -->
+          <!-- Ações Extras do Perfil (Backup Otaku Pro & Alternância) -->
           <div class="profile-extra-actions">
             <button type="button" id="btn-export-library" class="btn btn-outline btn-sm btn-export-action" title="Exportar histórico e catálogo em JSON">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
               <span>Exportar Minha Biblioteca (JSON) ⭐</span>
+            </button>
+            <button type="button" id="btn-toggle-pro-mode" class="btn btn-outline btn-sm btn-pro-toggle" title="Alternar entre Plano Free e Otaku Pro">
+              <span>⚡ Alternar Plano (Free / Otaku Pro)</span>
             </button>
           </div>
 
@@ -969,6 +988,9 @@
           <div class="premium-modal-actions">
             <button type="button" id="btn-confirm-checkout" class="btn btn-gold btn-checkout-action">
               <span>⭐ Assinar Otaku Pro por R$ 12,90/mês</span>
+            </button>
+            <button type="button" id="btn-instant-pro-activate" class="btn btn-outline btn-sm" style="border-color: #f59e0b; color: #f59e0b; width: 100%;" title="Ativar Otaku Pro para demonstração">
+              ⚡ Ativar Otaku Pro Imediatamente (Modo Teste / Demonstração)
             </button>
             <button type="button" id="btn-cancel-premium-modal" class="btn btn-ghost">
               Continuar no plano gratuito

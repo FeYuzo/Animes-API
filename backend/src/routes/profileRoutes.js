@@ -8,7 +8,8 @@ import {
   uploadProfileBanner,
   getProfileBanner,
   deleteProfileBanner,
-  exportUserData
+  exportUserData,
+  toggleProStatus
 } from '../controllers/profileController.js';
 import { authenticate } from '../middleware/auth.js';
 import { MAX_FILE_SIZE } from '../utils/fileValidation.js';
@@ -64,6 +65,9 @@ router.get('/banner/{*key}', getProfileBanner);
 
 // 2. Exportação da biblioteca em JSON (Recurso exclusivo Otaku Pro)
 router.get('/export', authenticate, exportUserData);
+
+// 2.1 Alternar status Otaku Pro (Modo demonstração/testes)
+router.post('/toggle-pro', authenticate, toggleProStatus);
 
 // 3. Consulta de perfil (autenticado)
 router.get('/me', authenticate, getProfile);

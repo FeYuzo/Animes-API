@@ -260,10 +260,14 @@ export const api = {
     });
   },
 
-  async togglePinFavorite(animeId, fixado = undefined) {
+  async togglePinFavorite(animeId, payload = {}) {
+    const bodyObj = typeof payload === 'boolean'
+      ? { fixado: payload }
+      : (typeof payload === 'object' && payload !== null ? payload : {});
+
     return this.request(`/animes/favoritos/${animeId}/pin`, {
       method: 'PATCH',
-      body: JSON.stringify(fixado !== undefined ? { fixado } : {})
+      body: JSON.stringify(bodyObj)
     });
   },
 
@@ -326,6 +330,12 @@ export const api = {
   },
 
   // ===== PLANO OTAKU PRO & ASSINATURA =====
+  async toggleProStatus() {
+    return this.request('/profile/toggle-pro', {
+      method: 'POST'
+    });
+  },
+
   async createStripeCheckout() {
     return this.request('/stripe/create-checkout-session', {
       method: 'POST'
