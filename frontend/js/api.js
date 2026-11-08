@@ -260,6 +260,13 @@ export const api = {
     });
   },
 
+  async togglePinFavorite(animeId, fixado = undefined) {
+    return this.request(`/animes/favoritos/${animeId}/pin`, {
+      method: 'PATCH',
+      body: JSON.stringify(fixado !== undefined ? { fixado } : {})
+    });
+  },
+
   // ===== COMENTÁRIOS =====
   async getAnimeComments(animeId) {
     return this.request(`/animes/${animeId}/comments`);
@@ -299,6 +306,23 @@ export const api = {
       method: 'POST',
       body: formData
     });
+  },
+
+  async uploadProfileBanner(formData, userId = 'me') {
+    return this.request(`/profile/${userId}/banner`, {
+      method: 'POST',
+      body: formData
+    });
+  },
+
+  async deleteProfileBanner() {
+    return this.request('/profile/banner', {
+      method: 'DELETE'
+    });
+  },
+
+  async exportUserData() {
+    return this.request('/profile/export');
   },
 
   // ===== PLANO OTAKU PRO & ASSINATURA =====

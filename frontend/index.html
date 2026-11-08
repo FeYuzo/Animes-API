@@ -351,7 +351,7 @@
         
         <div class="section-header-center">
           <h2 class="section-title">Escolha o plano ideal para a sua rotina</h2>
-          <p class="section-subtitle">Comece gratuitamente ou desbloqueie capacidade irrestrita com o Otaku Pro.</p>
+          <p class="section-subtitle">No plano gratuito você tem listas ilimitadas! No Otaku Pro, você desbloqueia customização visual completa do seu perfil e selo VIP.</p>
         </div>
 
         <div class="landing-pricing-grid">
@@ -360,7 +360,7 @@
           <div class="pricing-plan-card">
             <div class="plan-header">
               <h3 class="plan-name">Plano Gratuito</h3>
-              <p class="plan-desc">Perfeito para quem está começando a organizar seus primeiros animes.</p>
+              <p class="plan-desc">Acesso completo e ilimitado para acompanhar todos os animes que você ama.</p>
               <div class="plan-price">
                 <span class="plan-currency">R$</span>
                 <span class="plan-amount">0</span>
@@ -369,12 +369,15 @@
             </div>
 
             <ul class="plan-features">
-              <li><span class="feat-check">✓</span> Até <strong>15 animes</strong> assistidos registrados</li>
-              <li><span class="feat-check">✓</span> Até <strong>10 animes</strong> na fila de espera (Irá Ver)</li>
-              <li><span class="feat-check">✓</span> Até <strong>5 animes</strong> favoritos na galeria</li>
-              <li><span class="feat-check">✓</span> Grade completa do calendário de simulcast</li>
-              <li><span class="feat-check">✓</span> Participação livre nos comentários</li>
-              <li><span class="feat-check">✓</span> Alternância de tema Claro e Noturno</li>
+              <li><span class="feat-check">✓</span> <strong>Animes Assistidos ILIMITADOS</strong> (sem travas)</li>
+              <li><span class="feat-check">✓</span> <strong>Fila de Espera (Irá Ver) ILIMITADA</strong></li>
+              <li><span class="feat-check">✓</span> <strong>Galeria de Favoritos ILIMITADA</strong></li>
+              <li><span class="feat-check">✓</span> Fixe até <strong>2 animes favoritos</strong> no topo do perfil</li>
+              <li><span class="feat-check">✓</span> Foto de perfil estática (PNG, JPG, WebP)</li>
+              <li><span class="feat-check">✓</span> Grade semanal de simulcast e lançamentos do dia</li>
+              <li><span class="feat-check">✓</span> Comentários comunitários e progresso em tempo real</li>
+              <li class="text-muted"><span class="feat-check text-muted">✕</span> <em>Sem GIFs animados como foto de perfil</em></li>
+              <li class="text-muted"><span class="feat-check text-muted">✕</span> <em>Sem customização de banner do perfil</em></li>
             </ul>
 
             <a href="auth.html?tab=register" class="btn btn-outline btn-block btn-open-register">
@@ -388,7 +391,7 @@
             
             <div class="plan-header">
               <h3 class="plan-name text-gold">Plano Otaku Pro</h3>
-              <p class="plan-desc">Liberdade total para os verdadeiros fãs de animes que não querem travas.</p>
+              <p class="plan-desc">A experiência máxima para otakus: perfil animado, banners e prestígio VIP.</p>
               <div class="plan-price">
                 <span class="plan-currency text-gold">R$</span>
                 <span class="plan-amount text-gold">12,90</span>
@@ -397,12 +400,14 @@
             </div>
 
             <ul class="plan-features">
-              <li><span class="feat-check text-gold">★</span> <strong>Animes Assistidos Ilimitados</strong> (sem travas)</li>
-              <li><span class="feat-check text-gold">★</span> <strong>Fila de Espera Ilimitada</strong> para todas as temporadas</li>
-              <li><span class="feat-check text-gold">★</span> <strong>Favoritos Ilimitados</strong> com destaque pessoal</li>
-              <li><span class="feat-check text-gold">★</span> <strong>Foto de perfil personalizada</strong> em alta definição</li>
-              <li><span class="feat-check text-gold">★</span> <strong>Selo VIP Dourado ⭐ Otaku Pro</strong> nos comentários</li>
-              <li><span class="feat-check text-gold">★</span> Filtros avançados de simulcast por dia da semana</li>
+              <li><span class="feat-check text-gold">★</span> <strong>Todos os direitos e listas ilimitadas do Plano Gratuito</strong></li>
+              <li><span class="feat-check text-gold">★</span> <strong>Avatar com GIFs Animados</strong> liberado no perfil</li>
+              <li><span class="feat-check text-gold">★</span> <strong>Banner Personalizado do Perfil</strong> com imagens e GIFs</li>
+              <li><span class="feat-check text-gold">★</span> Fixe <strong>até 6 animes favoritos</strong> no topo do perfil</li>
+              <li><span class="feat-check text-gold">★</span> <strong>Selo VIP Dourado ⭐ OTAKU PRO</strong> no perfil e comentários</li>
+              <li><span class="feat-check text-gold">★</span> <strong>Aura VIP Dourada</strong> brilhante ao redor do avatar</li>
+              <li><span class="feat-check text-gold">★</span> <strong>Estatísticas Avançadas</strong> (horas e dias assistidos)</li>
+              <li><span class="feat-check text-gold">★</span> <strong>Exportação da Biblioteca</strong> (Backup em JSON)</li>
               <li><span class="feat-check text-gold">★</span> Cancelamento flexível a qualquer momento</li>
             </ul>
 
@@ -726,11 +731,33 @@
 
         <div class="modal-body profile-modal-body">
           
+          <!-- Profile Banner Container (Exclusivo Otaku Pro para Customização) -->
+          <div class="profile-banner-container">
+            <img id="profile-banner-img" class="profile-banner-img hidden" alt="Banner do Perfil">
+            <div id="profile-banner-fallback" class="profile-banner-fallback">
+              <div class="banner-pattern-overlay"></div>
+              <span class="banner-default-tag">Banner do Perfil</span>
+            </div>
+            
+            <div id="profile-banner-controls" class="profile-banner-controls hidden">
+              <input type="file" id="input-profile-banner" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden">
+              <button type="button" id="btn-upload-banner" class="btn btn-sm btn-banner-action" title="Personalizar Banner do Perfil">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                <span id="lbl-banner-btn-text">Personalizar Banner ⭐</span>
+              </button>
+              <button type="button" id="btn-remove-banner" class="btn btn-sm btn-banner-action-danger hidden" title="Remover Banner Personalizado">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <span>Remover</span>
+              </button>
+              <div id="upload-banner-spinner" class="spinner-sm hidden"></div>
+            </div>
+          </div>
+
           <!-- Profile Card -->
           <div class="profile-hero-card">
             
             <div class="profile-avatar-wrapper">
-              <div class="profile-avatar-circle">
+              <div id="profile-avatar-circle" class="profile-avatar-circle">
                 <img id="profile-avatar-img" class="profile-avatar-img hidden" alt="Foto de perfil">
                 <span id="profile-avatar-fallback" class="profile-avatar-fallback">
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -745,6 +772,7 @@
                   <span>Alterar Foto</span>
                 </label>
                 <div id="upload-photo-spinner" class="spinner-sm hidden"></div>
+                <span class="profile-photo-hint text-xs text-muted">Estáticas no Free • GIFs no ⭐ Otaku Pro</span>
               </div>
             </div>
 
@@ -799,18 +827,50 @@
             <div class="stat-card">
               <span class="stat-card-label">Animes Assistidos</span>
               <span id="stat-count-watched" class="stat-card-value">0</span>
-              <span id="stat-limit-watched" class="stat-card-limit">Limite Free: 15</span>
+              <span id="stat-limit-watched" class="stat-card-limit">Ilimitado</span>
             </div>
             <div class="stat-card">
               <span class="stat-card-label">Fila (Irá Ver)</span>
               <span id="stat-count-plantowatch" class="stat-card-value">0</span>
-              <span id="stat-limit-plantowatch" class="stat-card-limit">Limite Free: 10</span>
+              <span id="stat-limit-plantowatch" class="stat-card-limit">Ilimitado</span>
             </div>
             <div class="stat-card">
               <span class="stat-card-label">Favoritos</span>
               <span id="stat-count-favorites" class="stat-card-value">0</span>
-              <span id="stat-limit-favorites" class="stat-card-limit">Limite Free: 5</span>
+              <span id="stat-limit-favorites" class="stat-card-limit">Ilimitado</span>
             </div>
+            <div class="stat-card">
+              <span class="stat-card-label">Animes Fixados</span>
+              <span id="stat-count-pinned" class="stat-card-value">0/2</span>
+              <span id="stat-limit-pinned" class="stat-card-limit">Máx: 2 Free • 6 Pro</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-card-label">Tempo Assistido</span>
+              <span id="stat-count-time" class="stat-card-value">0h</span>
+              <span id="stat-desc-time" class="stat-card-limit">0 episódios vistos</span>
+            </div>
+          </div>
+
+          <!-- Animes Fixados no Perfil (Pinned Highlights) -->
+          <div class="profile-pinned-section">
+            <div class="pinned-section-header">
+              <div class="pinned-title-wrapper">
+                <span class="pinned-icon">📌</span>
+                <h4 class="pinned-title">Animes Favoritos Fixados no Perfil</h4>
+              </div>
+              <span id="profile-pinned-badge" class="badge-pinned-capacity">0/2 fixados</span>
+            </div>
+            <div id="profile-pinned-list" class="profile-pinned-list">
+              <!-- Renderizado via app.js -->
+            </div>
+          </div>
+
+          <!-- Ações Extras do Perfil (Backup Otaku Pro) -->
+          <div class="profile-extra-actions">
+            <button type="button" id="btn-export-library" class="btn btn-outline btn-sm btn-export-action" title="Exportar histórico e catálogo em JSON">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <span>Exportar Minha Biblioteca (JSON) ⭐</span>
+            </button>
           </div>
 
           <!-- Otaku Pro Promo Card -->
@@ -819,7 +879,7 @@
               <div class="pro-box-icon">⭐</div>
               <div>
                 <h4 id="pro-box-title" class="pro-box-title">Plano Otaku Pro</h4>
-                <p id="pro-box-desc" class="pro-box-desc">Remova os limites de 15 assistidos, 10 na fila e 5 favoritos por apenas R$ 12,90/mês.</p>
+                <p id="pro-box-desc" class="pro-box-desc">Desbloqueie GIFs no avatar, banner personalizado com imagens e GIFs, até 6 animes fixados no perfil e backup JSON por R$ 12,90/mês.</p>
               </div>
             </div>
             <button type="button" id="btn-profile-subscribe" class="btn btn-gold btn-sm">
@@ -844,7 +904,7 @@
           <div class="premium-header-icon-badge">⭐</div>
           <div class="premium-header-text">
             <h3 id="premium-modal-title" class="modal-title">Plano Otaku Pro</h3>
-            <p class="premium-modal-subtitle">Liberdade completa para sua jornada de animes</p>
+            <p class="premium-modal-subtitle">Personalização máxima, recursos VIP e liberdade total para seu perfil</p>
           </div>
           <button id="btn-close-premium-modal" class="modal-close-btn" type="button" title="Fechar">&times;</button>
         </div>
@@ -866,34 +926,42 @@
 
           <div class="premium-benefits-list">
             <div class="premium-benefit-card">
-              <div class="benefit-icon">🍿</div>
+              <div class="benefit-icon">🖼️</div>
               <div class="benefit-content">
-                <h4 class="benefit-title">Histórico de Assistidos Ilimitado</h4>
-                <p class="benefit-desc">Remova a barreira de 15 títulos do plano gratuito e registre todo o seu histórico com notas e contagem de episódios.</p>
+                <h4 class="benefit-title">Avatar Animado com GIF & Aura VIP</h4>
+                <p class="benefit-desc">Coloque GIFs animados como foto de perfil e exiba uma moldura dourada exclusiva ao redor do seu avatar.</p>
               </div>
             </div>
 
             <div class="premium-benefit-card">
-              <div class="benefit-icon">📋</div>
+              <div class="benefit-icon">🎨</div>
               <div class="benefit-content">
-                <h4 class="benefit-title">Fila "Irá Ver" Ilimitada</h4>
-                <p class="benefit-desc">Supere o limite de 10 títulos e planeje todas as próximas temporadas de verão, outono, inverno e primavera.</p>
+                <h4 class="benefit-title">Banner Personalizado do Perfil</h4>
+                <p class="benefit-desc">Personalize o topo do seu perfil com imagens em alta definição e GIFs animados — exclusividade absoluta do Plano Otaku Pro.</p>
+              </div>
+            </div>
+
+            <div class="premium-benefit-card">
+              <div class="benefit-icon">📌</div>
+              <div class="benefit-content">
+                <h4 class="benefit-title">Até 6 Animes Favoritos Fixados</h4>
+                <p class="benefit-desc">Fixe até 6 obras de destaque no topo do seu perfil para que todos vejam seus animes favoritos supremos (usuários Free fixam 2).</p>
               </div>
             </div>
 
             <div class="premium-benefit-card">
               <div class="benefit-icon">⭐</div>
               <div class="benefit-content">
-                <h4 class="benefit-title">Galeria de Favoritos & Badge VIP Dourada</h4>
-                <p class="benefit-desc">Destaque quantos animes desejar e exiba o selo VIP dourado ⭐ Otaku Pro nos seus comentários e no seu perfil.</p>
+                <h4 class="benefit-title">Selo VIP Dourado ⭐ OTAKU PRO</h4>
+                <p class="benefit-desc">Ganhe destaque visual de prestígio nos comentários comunitários, no topo da barra de navegação e na sua página de perfil.</p>
               </div>
             </div>
 
             <div class="premium-benefit-card">
-              <div class="benefit-icon">🖼️</div>
+              <div class="benefit-icon">📊</div>
               <div class="benefit-content">
-                <h4 class="benefit-title">Foto de Perfil Personalizada</h4>
-                <p class="benefit-desc">Envie sua imagem de perfil favorita em alta resolução para destacar sua presença na comunidade.</p>
+                <h4 class="benefit-title">Estatísticas Avançadas & Backup JSON</h4>
+                <p class="benefit-desc">Acesse métricas completas de horas e dias assistidos e faça download completo da sua biblioteca de animes em JSON com 1 clique.</p>
               </div>
             </div>
           </div>

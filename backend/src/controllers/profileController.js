@@ -5,6 +5,16 @@ import { logAuditEvent } from '../services/auditService.js';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 
+async function checkUserIsPremium(userId) {
+  if (!userId) return false;
+  try {
+    const [rows] = await pool.query('SELECT is_premium FROM usuarios WHERE id = ?', [userId]);
+    return rows.length > 0 && Boolean(rows[0].is_premium);
+  } catch {
+    return false;
+  }
+}
+
 function getClientIp(req) {
   return req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || req.ip || 'desconhecido';
 }
@@ -31,7 +41,7 @@ export async function getProfile(req, res) {
 
     // 1. Busca dados do usuário no MariaDB
     const [users] = await pool.query(
-      'SELECT id, nome, email, role, bio, foto_perfil, is_premium, criado_em FROM usuarios WHERE id = ?',
+      'SELECT id, nome, email, role, bio, foto_perfil, banner_perfil, is_premium, criado_em FROM usuarios WHERE id = ?',
       [targetUserId]
     );
 
@@ -41,22 +51,22 @@ export async function getProfile(req, res) {
 
     const user = users[0];
 
-    // 2. Busca animes favoritados do usuário
+    // 2. Busca animes favoritados do usuário (incluindo status de fixado)
     let favoritesRows = [];
     try {
       const [favs] = await pool.query(
-        `SELECT f.id, f.usuario_id, f.anime_id, f.titulo, f.poster_url, f.criado_em,
+        `SELECT f.id, f.usuario_id, f.anime_id, f.titulo, f.poster_url, f.fixado, f.criado_em,
                 (SELECT COUNT(*) FROM comentarios c WHERE c.anime_id = f.anime_id) as comments_count
          FROM animes_favoritos f
          WHERE f.usuario_id = ?
-         ORDER BY f.criado_em DESC`,
+         ORDER BY f.fixado DESC, f.criado_em DESC`,
         [targetUserId]
       );
       favoritesRows = favs;
     } catch (_) {
       // Fallback para tabela legada se necessário
       const [favs] = await pool.query(
-        `SELECT f.id, f.usuario_id, f.tmdb_movie_id as anime_id, f.titulo, f.poster_path as poster_url, f.criado_em,
+        `SELECT f.id, f.usuario_id, f.tmdb_movie_id as anime_id, f.titulo, f.poster_path as poster_url, 0 as fixado, f.criado_em,
                 (SELECT COUNT(*) FROM comentarios c WHERE c.tmdb_movie_id = f.tmdb_movie_id) as comments_count
          FROM favoritos f
          WHERE f.usuario_id = ?
@@ -68,18 +78,21 @@ export async function getProfile(req, res) {
 
     const formattedFavorites = favoritesRows.map((fav) => ({
       ...fav,
+      fixado: Boolean(fav.fixado),
       poster_url: fav.poster_url || fav.poster_path || null
     }));
 
-    // 3. Contagem de animes assistidos e fila de espera
+    // 3. Contagem de animes assistidos, fila de espera e tempo assistido
     let totalAssistidos = 0;
     let totalIraVer = 0;
+    let totalEpisodiosVistos = 0;
     try {
       const [watchedCount] = await pool.query(
-        'SELECT COUNT(*) as total FROM animes_assistidos WHERE usuario_id = ?',
+        'SELECT COUNT(*) as total, COALESCE(SUM(episodios_vistos), 0) as total_eps FROM animes_assistidos WHERE usuario_id = ?',
         [targetUserId]
       );
       totalAssistidos = watchedCount[0]?.total || 0;
+      totalEpisodiosVistos = parseInt(watchedCount[0]?.total_eps || 0, 10);
 
       const [planCount] = await pool.query(
         'SELECT COUNT(*) as total FROM animes_ira_ver WHERE usuario_id = ?',
@@ -90,9 +103,16 @@ export async function getProfile(req, res) {
       console.warn('[Profile] Aviso ao contabilizar listas:', countErr.message);
     }
 
-    // Monta URLs de foto (direta do MinIO e proxy via catálogo)
+    // Monta URLs de foto e banner (direta do MinIO e proxy via catálogo)
     const fotoDirectUrl = user.foto_perfil ? getPhotoPublicUrl(user.foto_perfil) : null;
     const fotoProxyUrl = user.foto_perfil ? `/api/profile/photo/${user.foto_perfil}` : null;
+
+    const bannerDirectUrl = user.banner_perfil ? getPhotoPublicUrl(user.banner_perfil) : null;
+    const bannerProxyUrl = user.banner_perfil ? `/api/profile/banner/${user.banner_perfil}` : null;
+
+    const animesFixados = formattedFavorites.filter((f) => f.fixado);
+    const horasAssistidas = Number(((totalEpisodiosVistos * 24) / 60).toFixed(1));
+    const diasAssistidos = Number(((totalEpisodiosVistos * 24) / 1440).toFixed(1));
 
     return res.json({
       success: true,
@@ -106,12 +126,23 @@ export async function getProfile(req, res) {
         foto_perfil: user.foto_perfil || null,
         foto_url: fotoProxyUrl || fotoDirectUrl || null,
         foto_direct_url: fotoDirectUrl,
+        banner_perfil: user.banner_perfil || null,
+        banner_url: bannerProxyUrl || bannerDirectUrl || null,
+        banner_direct_url: bannerDirectUrl,
         criado_em: user.criado_em,
         is_owner: req.user ? req.user.id === user.id : false,
         favoritos: formattedFavorites,
+        animes_fixados: animesFixados,
+        total_fixados: animesFixados.length,
+        max_fixados: Boolean(user.is_premium) ? 6 : 2,
         total_favoritos: formattedFavorites.length,
         total_assistidos: totalAssistidos,
-        total_ira_ver: totalIraVer
+        total_ira_ver: totalIraVer,
+        tempo_assistido: {
+          total_episodios: totalEpisodiosVistos,
+          horas: horasAssistidas,
+          dias: diasAssistidos
+        }
       }
     });
   } catch (err) {
@@ -264,6 +295,26 @@ export async function uploadProfilePhoto(req, res) {
       });
     }
 
+    // Regra Otaku Pro: Avatares com GIFs animados são exclusivos para assinantes Pro
+    if (magicCheck.mime === 'image/gif') {
+      const isPremium = await checkUserIsPremium(authenticatedUserId);
+      if (!isPremium) {
+        logAuditEvent({
+          usuario_id: authenticatedUserId,
+          acao: 'tentativa_acesso_negada',
+          ip: clientIp,
+          detalhes: { motivo: 'avatar_gif_requer_otaku_pro' }
+        });
+
+        return res.status(403).json({
+          error: 'O uso de GIFs animados como foto de perfil é um recurso exclusivo do Plano Otaku Pro! Assine para desbloquear seu avatar animado.',
+          code: 'PREMIUM_REQUIRED',
+          feature: 'avatar_gif',
+          is_premium: false
+        });
+      }
+    }
+
     // 4. Gera chave única do objeto no MinIO: avatars/user-<id>-<timestamp>.<ext>
     const objectKey = `avatars/user-${authenticatedUserId}-${Date.now()}.${magicCheck.ext}`;
 
@@ -369,5 +420,302 @@ export async function getProfilePhoto(req, res) {
   } catch (err) {
     console.error('[Profile Photo Stream] Erro ao servir foto:', err);
     return res.status(500).json({ error: 'Erro ao carregar foto de perfil.' });
+  }
+}
+
+/**
+ * Upload de Banner Personalizado do Perfil
+ * - Recurso exclusivo do Plano Otaku Pro
+ * - Suporta imagens estáticas (PNG, JPG, WebP) e GIFs animados
+ * - Armazenamento no MinIO (banners/user-<id>-<timestamp>.<ext>)
+ * - Atualiza usuarios.banner_perfil no MariaDB
+ * 
+ * Rota: POST /api/profile/banner ou POST /api/profile/:id/banner
+ */
+export async function uploadProfileBanner(req, res) {
+  try {
+    const authenticatedUserId = req.user.id;
+    const clientIp = getClientIp(req);
+
+    // 1. Verificação de IDOR
+    const paramId = req.params.id && req.params.id !== 'me' ? parseInt(req.params.id, 10) : null;
+    const bodyUserId = req.body.usuario_id !== undefined ? parseInt(req.body.usuario_id, 10) : null;
+    const attemptedTargetId = paramId || bodyUserId;
+
+    if (attemptedTargetId && attemptedTargetId !== authenticatedUserId) {
+      logAuditEvent({
+        usuario_id: authenticatedUserId,
+        acao: 'permissao_negada',
+        ip: clientIp,
+        detalhes: {
+          motivo: 'tentativa_upload_banner_terceiro',
+          usuario_autenticado: authenticatedUserId,
+          usuario_alvo_tentado: attemptedTargetId
+        }
+      });
+
+      return res.status(403).json({
+        error: 'Acesso proibido. Você não pode alterar o banner de outro usuário.'
+      });
+    }
+
+    // 2. Verificação de Assinatura Otaku Pro (exclusividade do plano)
+    const isPremium = await checkUserIsPremium(authenticatedUserId);
+    if (!isPremium) {
+      logAuditEvent({
+        usuario_id: authenticatedUserId,
+        acao: 'tentativa_acesso_negada',
+        ip: clientIp,
+        detalhes: { motivo: 'banner_perfil_requer_otaku_pro' }
+      });
+
+      return res.status(403).json({
+        error: 'A customização do banner do perfil com imagens e GIFs é exclusiva para assinantes do Plano Otaku Pro!',
+        code: 'PREMIUM_REQUIRED',
+        feature: 'profile_banner',
+        is_premium: false
+      });
+    }
+
+    // 3. Valida se o arquivo foi enviado
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({
+        error: 'Nenhum arquivo de imagem ou GIF foi enviado no campo "banner".'
+      });
+    }
+
+    // 4. Validação por Magic Bytes (JPEG, PNG, WebP ou GIF)
+    const magicCheck = validateImageMagicBytes(req.file.buffer);
+    if (!magicCheck.valid) {
+      return res.status(400).json({
+        error: magicCheck.error || 'Formato de banner inválido.'
+      });
+    }
+
+    // 5. Gera chave única do objeto no MinIO: banners/user-<id>-<timestamp>.<ext>
+    const objectKey = `banners/user-${authenticatedUserId}-${Date.now()}.${magicCheck.ext}`;
+
+    try {
+      const exists = await minioClient.bucketExists(BUCKET_NAME);
+      if (!exists) {
+        await minioClient.makeBucket(BUCKET_NAME, 'us-east-1');
+      }
+    } catch (bErr) {
+      console.warn('[MinIO] Verificação de bucket:', bErr.message);
+    }
+
+    const metaData = {
+      'Content-Type': magicCheck.mime,
+      'X-Amz-Meta-UserId': String(authenticatedUserId),
+      'X-Amz-Meta-OriginalName': encodeURIComponent(req.file.originalname || 'banner')
+    };
+
+    await minioClient.putObject(
+      BUCKET_NAME,
+      objectKey,
+      req.file.buffer,
+      req.file.buffer.length,
+      metaData
+    );
+
+    // 6. Atualiza o banco de dados MariaDB: guarda APENAS a chave
+    const [userRows] = await pool.query('SELECT banner_perfil FROM usuarios WHERE id = ?', [authenticatedUserId]);
+    const oldBannerKey = userRows[0]?.banner_perfil;
+
+    await pool.query(
+      'UPDATE usuarios SET banner_perfil = ? WHERE id = ?',
+      [objectKey, authenticatedUserId]
+    );
+
+    // Remove banner antigo de forma assíncrona
+    if (oldBannerKey && oldBannerKey !== objectKey) {
+      minioClient.removeObject(BUCKET_NAME, oldBannerKey).catch(() => {});
+    }
+
+    logAuditEvent({
+      usuario_id: authenticatedUserId,
+      acao: 'upload_banner_perfil',
+      ip: clientIp,
+      detalhes: {
+        chave_objeto: objectKey,
+        formato: magicCheck.mime,
+        tamanho_bytes: req.file.buffer.length
+      }
+    });
+
+    const bannerDirectUrl = getPhotoPublicUrl(objectKey);
+    const bannerProxyUrl = `/api/profile/banner/${objectKey}`;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Banner do perfil atualizado com sucesso!',
+      banner_perfil: objectKey,
+      banner_url: bannerProxyUrl,
+      banner_direct_url: bannerDirectUrl
+    });
+  } catch (err) {
+    console.error('[Profile Banner Upload] Erro:', err);
+    return res.status(500).json({ error: `Erro ao enviar banner: ${err.message}` });
+  }
+}
+
+/**
+ * Remove banner personalizado do perfil (restaura o padrão)
+ * Rota: DELETE /api/profile/banner
+ */
+export async function deleteProfileBanner(req, res) {
+  try {
+    const authenticatedUserId = req.user.id;
+    const [userRows] = await pool.query('SELECT banner_perfil FROM usuarios WHERE id = ?', [authenticatedUserId]);
+    const oldBannerKey = userRows[0]?.banner_perfil;
+
+    if (oldBannerKey) {
+      await pool.query('UPDATE usuarios SET banner_perfil = NULL WHERE id = ?', [authenticatedUserId]);
+      minioClient.removeObject(BUCKET_NAME, oldBannerKey).catch(() => {});
+    }
+
+    return res.json({
+      success: true,
+      message: 'Banner personalizado removido. Banner padrão restaurado.'
+    });
+  } catch (err) {
+    console.error('[Profile Banner Delete] Erro:', err);
+    return res.status(500).json({ error: 'Erro ao remover banner de perfil.' });
+  }
+}
+
+/**
+ * Proxy / Streaming para servir banner de perfil direto do MinIO via catálogo
+ * Rota pública: GET /api/profile/banner/:key(*)
+ */
+export async function getProfileBanner(req, res) {
+  try {
+    const rawKey = req.params.key || req.params[0];
+    const objectKey = Array.isArray(rawKey) ? rawKey.join('/') : rawKey;
+
+    if (!objectKey) {
+      return res.status(400).json({ error: 'Chave do banner não informada.' });
+    }
+
+    const stat = await minioClient.statObject(BUCKET_NAME, objectKey).catch(() => null);
+    if (!stat) {
+      return res.status(404).json({ error: 'Banner não encontrado no storage.' });
+    }
+
+    const contentType = stat.metaData?.['content-type'] || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Length', stat.size);
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    if (stat.etag) {
+      res.setHeader('ETag', stat.etag);
+    }
+
+    const dataStream = await minioClient.getObject(BUCKET_NAME, objectKey);
+    dataStream.pipe(res);
+  } catch (err) {
+    console.error('[Profile Banner Stream] Erro ao servir banner:', err);
+    return res.status(500).json({ error: 'Erro ao carregar banner de perfil.' });
+  }
+}
+
+/**
+ * Exporta todos os dados da biblioteca de animes do usuário (JSON)
+ * Recurso exclusivo do Plano Otaku Pro
+ * Rota: GET /api/profile/export
+ */
+export async function exportUserData(req, res) {
+  try {
+    const userId = req.user.id;
+    const clientIp = getClientIp(req);
+    const isPremium = await checkUserIsPremium(userId);
+
+    if (!isPremium) {
+      logAuditEvent({
+        usuario_id: userId,
+        acao: 'tentativa_acesso_negada',
+        ip: clientIp,
+        detalhes: { motivo: 'exportacao_dados_requer_otaku_pro' }
+      });
+
+      return res.status(403).json({
+        error: 'A exportação completa dos seus dados e histórico de animes em JSON é exclusiva para membros do Plano Otaku Pro! Assine para fazer backup de todo o seu catálogo.',
+        code: 'PREMIUM_REQUIRED',
+        feature: 'export_data',
+        is_premium: false
+      });
+    }
+
+    const [users] = await pool.query(
+      'SELECT id, nome, email, role, bio, is_premium, criado_em FROM usuarios WHERE id = ?',
+      [userId]
+    );
+
+    const [watched] = await pool.query(
+      'SELECT anime_id, titulo, poster_url, episodios_vistos, total_episodios, nota, status, criado_em FROM animes_assistidos WHERE usuario_id = ? ORDER BY criado_em DESC',
+      [userId]
+    );
+
+    const [plan] = await pool.query(
+      'SELECT anime_id, titulo, poster_url, previsao_estreia, criado_em FROM animes_ira_ver WHERE usuario_id = ? ORDER BY criado_em DESC',
+      [userId]
+    );
+
+    const [favorites] = await pool.query(
+      'SELECT anime_id, titulo, poster_url, fixado, criado_em FROM animes_favoritos WHERE usuario_id = ? ORDER BY fixado DESC, criado_em DESC',
+      [userId]
+    );
+
+    const [comments] = await pool.query(
+      'SELECT anime_id, texto, criado_em FROM comentarios WHERE usuario_id = ? ORDER BY criado_em DESC',
+      [userId]
+    );
+
+    let totalEps = 0;
+    watched.forEach((w) => {
+      totalEps += parseInt(w.episodios_vistos || 0, 10);
+    });
+    const horasAssistidas = Number(((totalEps * 24) / 60).toFixed(1));
+    const diasAssistidos = Number(((totalEps * 24) / 1440).toFixed(1));
+
+    logAuditEvent({
+      usuario_id: userId,
+      acao: 'exportacao_biblioteca_otaku_pro',
+      ip: clientIp,
+      detalhes: {
+        total_assistidos: watched.length,
+        total_ira_ver: plan.length,
+        total_favoritos: favorites.length
+      }
+    });
+
+    const safeUserName = (users[0]?.nome || 'otaku').replace(/[^a-zA-Z0-9_-]/g, '_');
+    res.setHeader('Content-Disposition', `attachment; filename="anitrack-export-${safeUserName}-${Date.now()}.json"`);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
+    return res.json({
+      export_info: {
+        plataforma: 'AniTrack — Plataforma & API SaaS de Gestão de Animes',
+        versao: '2.0.0',
+        exportado_em: new Date().toISOString(),
+        plano: 'Otaku Pro (Assinante VIP)'
+      },
+      usuario: users[0] || { id: userId },
+      estatisticas: {
+        total_assistidos: watched.length,
+        total_fila_espera: plan.length,
+        total_favoritos: favorites.length,
+        total_episodios_assistidos: totalEps,
+        horas_assistidas: horasAssistidas,
+        dias_assistidos: diasAssistidos,
+        total_comentarios: comments.length
+      },
+      animes_assistidos: watched,
+      fila_espera_ira_ver: plan,
+      animes_favoritos: favorites.map((f) => ({ ...f, fixado: Boolean(f.fixado) })),
+      comentarios: comments
+    });
+  } catch (err) {
+    console.error('[Profile Export] Erro:', err);
+    return res.status(500).json({ error: 'Erro interno ao exportar dados da biblioteca.' });
   }
 }

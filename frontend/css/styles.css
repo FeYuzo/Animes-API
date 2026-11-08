@@ -2194,6 +2194,101 @@ button, input, select, textarea {
 /* --------------------------------------------------------------------------
    PROFILE MODAL & OTAKU PRO PRICING
    -------------------------------------------------------------------------- */
+.profile-modal-body {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+/* Banner do Perfil */
+.profile-banner-container {
+  position: relative;
+  width: calc(100% + 3rem);
+  margin-left: -1.5rem;
+  margin-right: -1.5rem;
+  height: 160px;
+  background-color: var(--bg-surface);
+  border-bottom: 2px solid var(--border-color);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+.profile-banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-banner-fallback {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 70%, #6366f1 100%);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.banner-pattern-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+  background-size: 16px 16px;
+  opacity: 0.5;
+}
+
+.banner-default-tag {
+  position: relative;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.profile-banner-controls {
+  position: absolute;
+  bottom: 0.75rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 5;
+}
+
+.btn-banner-action {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-banner-action:hover {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+  transform: translateY(-1px);
+}
+
+.btn-banner-action-danger {
+  background: rgba(220, 38, 38, 0.85);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-banner-action-danger:hover {
+  background: rgba(185, 28, 28, 0.95);
+  transform: translateY(-1px);
+}
+
 .profile-hero-card {
   display: flex;
   gap: 1.5rem;
@@ -2205,27 +2300,52 @@ button, input, select, textarea {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .profile-avatar-circle {
-  width: 90px;
-  height: 90px;
+  width: 96px;
+  height: 96px;
   border-radius: var(--radius-full);
   background-color: var(--bg-surface);
-  border: 2px solid var(--border-color);
+  border: 3px solid var(--border-color);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
   flex-shrink: 0;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* Aura VIP Dourada do Otaku Pro */
+.profile-avatar-circle.pro-avatar-glow {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.65), 0 0 28px rgba(245, 158, 11, 0.25);
+  animation: proPulseGlow 3s infinite ease-in-out;
+}
+
+@keyframes proPulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.55), 0 0 24px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(245, 158, 11, 0.85), 0 0 35px rgba(245, 158, 11, 0.4);
+  }
 }
 
 .profile-avatar-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.profile-photo-hint {
+  font-size: 0.68rem;
+  text-align: center;
+  max-width: 140px;
+  line-height: 1.2;
 }
 
 .profile-identity {
@@ -2258,8 +2378,8 @@ button, input, select, textarea {
 
 .profile-stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.85rem;
   margin-bottom: 1.5rem;
 }
 
@@ -2267,29 +2387,179 @@ button, input, select, textarea {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 1rem;
+  padding: 0.85rem;
   display: flex;
   flex-direction: column;
   text-align: center;
+  justify-content: center;
 }
 
 .stat-card-label {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-muted);
 }
 
 .stat-card-value {
   font-family: var(--font-heading);
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: var(--accent-primary);
-  margin: 0.25rem 0;
+  margin: 0.2rem 0;
 }
 
 .stat-card-limit {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-dim);
+}
+
+/* Seção de Animes Fixados no Perfil */
+.profile-pinned-section {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.pinned-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.pinned-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.pinned-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.badge-pinned-capacity {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--accent-gold);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.profile-pinned-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.75rem;
+}
+
+.pinned-card-item {
+  position: relative;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pinned-card-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-gold);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.pinned-card-poster {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  display: block;
+}
+
+.pinned-card-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-main);
+  padding: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.pinned-card-unpin-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(15, 23, 42, 0.85);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: var(--radius-full);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pinned-card-unpin-btn:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+.pinned-empty-msg {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Botão de Exportação da Biblioteca */
+.profile-extra-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.25rem;
+}
+
+.btn-export-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-color: rgba(245, 158, 11, 0.4);
+  color: var(--accent-gold);
+}
+
+.btn-export-action:hover {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: var(--accent-gold);
+}
+
+/* Quick Pin Action Button em Cards de Animes */
+.btn-quick-pin {
+  color: var(--text-dim);
+}
+
+.btn-quick-pin.active-pin {
+  color: var(--accent-gold);
+  background-color: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.pill-badge-pinned {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
 }
 
 .profile-pro-box {

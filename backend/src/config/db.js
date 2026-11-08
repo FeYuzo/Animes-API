@@ -74,11 +74,23 @@ export async function initDatabase(retries = 5, delayMs = 3000) {
           anime_id INT NOT NULL,
           titulo VARCHAR(255) NOT NULL,
           poster_url VARCHAR(255),
+          fixado BOOLEAN DEFAULT FALSE,
           criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
           UNIQUE KEY uq_usuario_favorito (usuario_id, anime_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
+
+      // Garante a coluna fixado caso a tabela animes_favoritos já exista
+      try {
+        const [fixCols] = await connection.query(`SHOW COLUMNS FROM animes_favoritos LIKE 'fixado'`);
+        if (fixCols.length === 0) {
+          console.log('[Catalog-DB] Adicionando coluna "fixado" na tabela animes_favoritos...');
+          await connection.query(`ALTER TABLE animes_favoritos ADD COLUMN fixado BOOLEAN DEFAULT FALSE AFTER poster_url`);
+        }
+      } catch (err) {
+        console.warn('[Catalog-DB] Aviso ao checar coluna fixado em animes_favoritos:', err.message);
+      }
 
       // 4. Tabela de Comentários (Compatível com animes e legado)
       await connection.query(`
@@ -127,6 +139,11 @@ export async function initDatabase(retries = 5, delayMs = 3000) {
         const [fotoCols] = await connection.query(`SHOW COLUMNS FROM usuarios LIKE 'foto_perfil'`);
         if (fotoCols.length === 0) {
           await connection.query(`ALTER TABLE usuarios ADD COLUMN foto_perfil VARCHAR(255) DEFAULT NULL AFTER bio`);
+        }
+        const [bannerCols] = await connection.query(`SHOW COLUMNS FROM usuarios LIKE 'banner_perfil'`);
+        if (bannerCols.length === 0) {
+          console.log('[Catalog-DB] Adicionando coluna "banner_perfil" na tabela usuarios...');
+          await connection.query(`ALTER TABLE usuarios ADD COLUMN banner_perfil VARCHAR(255) DEFAULT NULL AFTER foto_perfil`);
         }
         const [premiumCols] = await connection.query(`SHOW COLUMNS FROM usuarios LIKE 'is_premium'`);
         if (premiumCols.length === 0) {

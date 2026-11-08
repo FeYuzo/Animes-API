@@ -223,7 +223,7 @@ export async function listWatched(req, res) {
       success: true,
       total: rows.length,
       is_premium: isPremium,
-      limit: isPremium ? null : 15,
+      limit: null, // Ilimitado para todos os usuários (Plano Free e Pro)
       animes: rows
     });
   } catch (err) {
@@ -234,7 +234,7 @@ export async function listWatched(req, res) {
 
 /**
  * Cadastra anime concluído ou em progresso no histórico do usuário.
- * Regra Freemium: Usuários Free salvam até 15 animes. Ao atingir o 16º, retorna 403 PREMIUM_REQUIRED.
+ * Regra: Ilimitado para todos os usuários (Free e Pro).
  * Emite evento Redis Streams: anime_marcado_assistido
  * Rota: POST /api/animes/assistidos
  */
@@ -251,46 +251,6 @@ export async function addWatched(req, res) {
     const parsedAnimeId = parseInt(anime_id, 10);
     if (isNaN(parsedAnimeId)) {
       return res.status(400).json({ error: 'anime_id deve ser um número inteiro.' });
-    }
-
-    const isPremium = await checkUserIsPremium(userId);
-    const FREE_LIMIT = 15;
-
-    if (!isPremium) {
-      // Checa se o anime já está cadastrado
-      const [existing] = await pool.query(
-        'SELECT id FROM animes_assistidos WHERE usuario_id = ? AND anime_id = ?',
-        [userId, parsedAnimeId]
-      );
-
-      if (existing.length === 0) {
-        const [countRows] = await pool.query(
-          'SELECT COUNT(*) as total FROM animes_assistidos WHERE usuario_id = ?',
-          [userId]
-        );
-        const currentCount = countRows[0]?.total || 0;
-
-        if (currentCount >= FREE_LIMIT) {
-          logAuditEvent({
-            usuario_id: userId,
-            acao: 'tentativa_acesso_negada',
-            ip: clientIp,
-            detalhes: {
-              motivo: 'limite_animes_assistidos_plano_free',
-              limite: FREE_LIMIT,
-              atual: currentCount
-            }
-          });
-
-          return res.status(403).json({
-            error: `Você atingiu o limite de ${FREE_LIMIT} animes assistidos do Plano Gratuito. Faça upgrade para o Plano Otaku Pro para registros ilimitados!`,
-            code: 'PREMIUM_REQUIRED',
-            limit: FREE_LIMIT,
-            current: currentCount,
-            is_premium: false
-          });
-        }
-      }
     }
 
     // Salva ou atualiza no MariaDB
@@ -470,7 +430,7 @@ export async function listPlanToWatch(req, res) {
       success: true,
       total: rows.length,
       is_premium: isPremium,
-      limit: isPremium ? null : 10,
+      limit: null, // Ilimitado para todos os usuários (Plano Free e Pro)
       animes: rows
     });
   } catch (err) {
@@ -481,7 +441,7 @@ export async function listPlanToWatch(req, res) {
 
 /**
  * Adiciona anime à fila de espera (Plan to Watch).
- * Regra Freemium: Usuários Free salvam até 10 animes. Ao atingir o 11º, retorna 403 PREMIUM_REQUIRED.
+ * Regra: Ilimitado para todos os usuários (Free e Pro).
  * Emite evento Redis Streams: anime_adicionado_ira_ver
  * Rota: POST /api/animes/ira-ver
  */
@@ -498,45 +458,6 @@ export async function addPlanToWatch(req, res) {
     const parsedAnimeId = parseInt(anime_id, 10);
     if (isNaN(parsedAnimeId)) {
       return res.status(400).json({ error: 'anime_id deve ser um número inteiro.' });
-    }
-
-    const isPremium = await checkUserIsPremium(userId);
-    const FREE_LIMIT = 10;
-
-    if (!isPremium) {
-      const [existing] = await pool.query(
-        'SELECT id FROM animes_ira_ver WHERE usuario_id = ? AND anime_id = ?',
-        [userId, parsedAnimeId]
-      );
-
-      if (existing.length === 0) {
-        const [countRows] = await pool.query(
-          'SELECT COUNT(*) as total FROM animes_ira_ver WHERE usuario_id = ?',
-          [userId]
-        );
-        const currentCount = countRows[0]?.total || 0;
-
-        if (currentCount >= FREE_LIMIT) {
-          logAuditEvent({
-            usuario_id: userId,
-            acao: 'tentativa_acesso_negada',
-            ip: clientIp,
-            detalhes: {
-              motivo: 'limite_fila_espera_plano_free',
-              limite: FREE_LIMIT,
-              atual: currentCount
-            }
-          });
-
-          return res.status(403).json({
-            error: `Você atingiu o limite de ${FREE_LIMIT} animes na fila de espera do Plano Gratuito. Faça upgrade para o Plano Otaku Pro para fila ilimitada!`,
-            code: 'PREMIUM_REQUIRED',
-            limit: FREE_LIMIT,
-            current: currentCount,
-            is_premium: false
-          });
-        }
-      }
     }
 
     await pool.query(
@@ -619,19 +540,23 @@ export async function listFavorites(req, res) {
     const isPremium = await checkUserIsPremium(userId);
 
     const [rows] = await pool.query(
-      `SELECT id, usuario_id, anime_id, titulo, poster_url, criado_em
+      `SELECT id, usuario_id, anime_id, titulo, poster_url, fixado, criado_em
        FROM animes_favoritos
        WHERE usuario_id = ?
-       ORDER BY criado_em DESC`,
+       ORDER BY fixado DESC, criado_em DESC`,
       [userId]
     );
+
+    const pinnedCount = rows.filter((r) => Boolean(r.fixado)).length;
 
     return res.json({
       success: true,
       total: rows.length,
       is_premium: isPremium,
-      limit: isPremium ? null : 5,
-      favorites: rows
+      limit: null, // Ilimitado para todos os usuários (Plano Free e Pro)
+      pinned_count: pinnedCount,
+      pinned_limit: isPremium ? 6 : 2,
+      favorites: rows.map((r) => ({ ...r, fixado: Boolean(r.fixado) }))
     });
   } catch (err) {
     console.error('[Favorites] Erro ao listar favoritos:', err);
@@ -641,7 +566,7 @@ export async function listFavorites(req, res) {
 
 /**
  * Adiciona anime aos favoritos.
- * Regra Freemium: Usuários Free salvam até 5 favoritos. Ao atingir o 6º, retorna 403 PREMIUM_REQUIRED.
+ * Regra: Ilimitado para todos os usuários (Free e Pro).
  * Emite evento Redis Streams: anime_favoritado
  * Rota: POST /api/animes/favoritos
  */
@@ -662,44 +587,6 @@ export async function addFavorite(req, res) {
     }
 
     const resolvedPoster = poster_url || poster_path || null;
-    const isPremium = await checkUserIsPremium(userId);
-    const FREE_LIMIT = 5;
-
-    if (!isPremium) {
-      const [existing] = await pool.query(
-        'SELECT id FROM animes_favoritos WHERE usuario_id = ? AND anime_id = ?',
-        [userId, parsedId]
-      );
-
-      if (existing.length === 0) {
-        const [countRows] = await pool.query(
-          'SELECT COUNT(*) as total FROM animes_favoritos WHERE usuario_id = ?',
-          [userId]
-        );
-        const currentCount = countRows[0]?.total || 0;
-
-        if (currentCount >= FREE_LIMIT) {
-          logAuditEvent({
-            usuario_id: userId,
-            acao: 'tentativa_acesso_negada',
-            ip: clientIp,
-            detalhes: {
-              motivo: 'limite_favoritos_plano_free',
-              limite: FREE_LIMIT,
-              atual: currentCount
-            }
-          });
-
-          return res.status(403).json({
-            error: `Você atingiu o limite de ${FREE_LIMIT} animes favoritos do Plano Gratuito. Assine o Plano Otaku Pro para ter favoritos ilimitados!`,
-            code: 'PREMIUM_REQUIRED',
-            limit: FREE_LIMIT,
-            current: currentCount,
-            is_premium: false
-          });
-        }
-      }
-    }
 
     await pool.query(
       `INSERT INTO animes_favoritos (usuario_id, anime_id, titulo, poster_url)
@@ -794,6 +681,104 @@ export async function removeFavorite(req, res) {
   } catch (err) {
     console.error('[Favorites] Erro ao remover favorito:', err);
     return res.status(500).json({ error: 'Erro ao remover favorito.', details: err.message });
+  }
+}
+
+/**
+ * Alterna ou define se um anime favorito está fixado no perfil.
+ * Regra: Usuários Free podem fixar até 2 animes. Usuários Otaku Pro podem fixar até 6 animes.
+ * Rota: PATCH /api/animes/favoritos/:id/pin
+ */
+export async function togglePinFavorite(req, res) {
+  try {
+    const userId = req.user.id;
+    const clientIp = getClientIp(req);
+    const targetId = parseInt(req.params.id, 10);
+
+    if (isNaN(targetId)) {
+      return res.status(400).json({ error: 'Identificador de favorito inválido.' });
+    }
+
+    const [favRows] = await pool.query(
+      'SELECT id, anime_id, titulo, fixado FROM animes_favoritos WHERE usuario_id = ? AND (id = ? OR anime_id = ?)',
+      [userId, targetId, targetId]
+    );
+
+    if (favRows.length === 0) {
+      return res.status(404).json({ error: 'Anime favorito não encontrado na sua lista.' });
+    }
+
+    const currentFav = favRows[0];
+    const isPremium = await checkUserIsPremium(userId);
+    const maxAllowed = isPremium ? 6 : 2;
+
+    const newFixadoState = req.body.fixado !== undefined ? Boolean(req.body.fixado) : !Boolean(currentFav.fixado);
+
+    if (newFixadoState) {
+      // Contabiliza quantos animes já estão fixados (excluindo este registro)
+      const [countRows] = await pool.query(
+        'SELECT COUNT(*) as total FROM animes_favoritos WHERE usuario_id = ? AND fixado = TRUE AND id != ?',
+        [userId, currentFav.id]
+      );
+      const currentlyPinned = countRows[0]?.total || 0;
+
+      if (!isPremium && currentlyPinned >= 2) {
+        logAuditEvent({
+          usuario_id: userId,
+          acao: 'tentativa_acesso_negada',
+          ip: clientIp,
+          detalhes: {
+            motivo: 'limite_animes_fixados_plano_free',
+            limite: 2,
+            atual: currentlyPinned
+          }
+        });
+
+        return res.status(403).json({
+          error: 'Usuários do Plano Gratuito podem fixar até 2 animes favoritos no perfil. Assine o Plano Otaku Pro para fixar até 6 animes!',
+          code: 'PREMIUM_REQUIRED',
+          limit: 2,
+          current: currentlyPinned,
+          is_premium: false
+        });
+      }
+
+      if (currentlyPinned >= maxAllowed) {
+        return res.status(400).json({
+          error: `Você já atingiu o limite de ${maxAllowed} animes fixados no perfil.`,
+          code: 'PIN_LIMIT_REACHED',
+          limit: maxAllowed
+        });
+      }
+    }
+
+    await pool.query(
+      'UPDATE animes_favoritos SET fixado = ? WHERE id = ? AND usuario_id = ?',
+      [newFixadoState, currentFav.id, userId]
+    );
+
+    logAuditEvent({
+      usuario_id: userId,
+      acao: newFixadoState ? 'anime_favorito_fixado' : 'anime_favorito_desfixado',
+      ip: clientIp,
+      detalhes: {
+        favorito_id: currentFav.id,
+        anime_id: currentFav.anime_id,
+        titulo: currentFav.titulo,
+        fixado: newFixadoState
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: newFixadoState ? 'Anime fixado no topo do perfil com sucesso!' : 'Anime desfixado do perfil.',
+      id: currentFav.id,
+      anime_id: currentFav.anime_id,
+      fixado: newFixadoState
+    });
+  } catch (err) {
+    console.error('[Favorites Pin] Erro ao alternar fixação de favorito:', err);
+    return res.status(500).json({ error: 'Erro ao atualizar destaque do anime no perfil.', details: err.message });
   }
 }
 

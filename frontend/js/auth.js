@@ -223,7 +223,7 @@ export async function initAuth() {
     window.history.replaceState({}, document.title, window.location.pathname);
     if (paymentStatus === 'success') {
       setTimeout(() => {
-        alert('🎉 Bem-vindo ao Otaku Pro! Sua assinatura foi aprovada com sucesso. Você agora tem listas ilimitadas, upload de avatar e selo VIP!');
+        alert('🎉 Bem-vindo ao Otaku Pro! Sua assinatura foi aprovada com sucesso. Você agora pode personalizar seu banner com imagens e GIFs, usar avatar animado com GIF, fixar até 6 animes favoritos no perfil e exportar seu catálogo!');
       }, 500);
     } else if (paymentStatus === 'cancel') {
       setTimeout(() => {

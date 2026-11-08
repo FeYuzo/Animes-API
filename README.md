@@ -63,23 +63,25 @@ O **AniTrack** adota o modelo **Freemium**, combinando uma camada de entrada gra
 | Recurso / Benefício | Plano Free (Gratuito) | Plano Otaku Pro (Assinatura) |
 | :--- | :---: | :---: |
 | **Mensalidade** | **R$ 0,00 / mês** | **R$ 12,90 / mês** *(via Stripe)* |
-| **Animes Assistidos** | Até 15 animes registrados | **Ilimitado** (histórico e estatísticas) |
-| **Animes que Irá Ver** | Até 10 animes na fila de espera | **Ilimitado** (planejamento irrestrito) |
-| **Animes Favoritos** | Até 5 títulos destacados | **Ilimitado** com ordenação personalizada |
-| **Catálogo & Simulcast** | Grade básica da temporada | Grade completa com filtro por dia da semana |
-| **Upload de Avatar (MinIO S3)** | Apenas imagem padrão | **Upload de fotos e banners customizados em HD** |
-| **Presença na Comunidade** | Comentários normais | **Badge VIP Dourada ⭐ Otaku Pro** |
-| **Experiência de Uso** | Limites por conta | **Sem travas e suporte prioritário** |
+| **Animes Assistidos** | **Ilimitado** (sem travas ou limites) | **Ilimitado** (histórico e estatísticas completas) |
+| **Animes que Irá Ver** | **Ilimitado** (fila de espera irrestrita) | **Ilimitado** (planejamento irrestrito) |
+| **Animes Favoritos** | **Ilimitado** (galeria livre) | **Ilimitado** (galeria livre) |
+| **Animes Fixados no Perfil** | Até **2 animes** fixados | Até **6 animes** fixados no topo do perfil |
+| **Foto de Perfil (Avatar)** | Fotos estáticas (PNG, JPG, WebP) | **GIFs animados** liberados + Aura VIP Dourada |
+| **Banner do Perfil** | Banner padrão do sistema | **Customização completa com imagens e GIFs** |
+| **Presença na Comunidade** | Comentários normais | **Selo VIP Dourado ⭐ OTAKU PRO** |
+| **Estatísticas Avançadas** | Contadores básicos | **Tempo assistido em horas, dias e episódios** |
+| **Exportação da Biblioteca** | Não disponível | **Download de backup da biblioteca em JSON** |
 
-### O que o Plano Free limita:
-O plano Free foi desenhado para atuar como funil de experimentação: permite cadastrar no máximo 15 animes assistidos, 10 animes na lista de "irá ver" e 5 favoritos, mantendo o avatar com foto padrão. Ao atingir o 16º anime assistido, 11º anime na fila ou 6º favorito, o sistema intercepta a ação com `HTTP 403 Forbidden` (`code: PREMIUM_REQUIRED`) e abre a oferta de upgrade para o plano Pro.
+### O modelo de diferenciação:
+No **Plano Gratuito**, o usuário possui liberdade total para organizar sua vida otaku com listagem ilimitada de animes assistidos, fila de espera (irá ver) e favoritos, além de fixar até 2 animes favoritos no perfil.
 
-### Por que alguém pagaria o Pro?
-Um fã de anime ativo consome entre 10 e 20 séries por ano e acompanha de 4 a 8 animes por trimestre de temporada (*Winter, Spring, Summer, Fall*). O teto de 15 títulos do Free é facilmente superado no primeiro mês. Por apenas **R$ 12,90/mês** (um valor acessível, equivalente a um café ou lanche rápido), o usuário:
-1. Elimina para sempre qualquer barreira de limite de animes assistidos, pendentes e favoritos;
-2. Conquista liberdade de customização enviando sua foto de perfil preferida via MinIO;
-3. Ganha visibilidade e prestígio na comunidade com o selo dourado nos comentários;
-4. Monitora a temporada inteira de simulcast com filtros inteligentes e visão por dia da semana.
+No **Plano Otaku Pro**, o usuário mantém todos os direitos do plano gratuito e desbloqueia diferenciais exclusivos voltados à **personalização máxima e prestígio social**:
+1. **Avatar Animado:** liberdade para enviar **GIFs animados** como foto de perfil;
+2. **Banner Personalizado do Perfil:** customização com **imagens em alta resolução e GIFs animados**;
+3. **Destaque Pessoal Ampliado:** fixação de **até 6 animes favoritos** no topo do perfil (vs 2 no Free);
+4. **Visibilidade & Prestígio VIP:** selo VIP dourado ⭐ nos comentários comunitários, no perfil e na navbar, além de aura dourada no avatar;
+5. **Estatísticas Avançadas & Backup:** contador automático de horas e dias assistidos e botão de **exportação da biblioteca inteira em JSON** para backup em 1 clique.
 
 ---
 
@@ -109,7 +111,7 @@ Tabela executiva com os **9 blocos de Ash Maurya** preenchida para a plataforma 
 | **Proposta única de valor** | Numa frase, por que escolher o seu produto e não as alternativas? | **Sua jornada otaku centralizada em um só lugar:** controle animes assistidos, planeje o que vai ver, destaque favoritos e acompanhe lançamentos semanais de simulcast em uma plataforma rápida, limpa e moderna. |
 | **Solução** | As 3 funcionalidades que atacam cada dor, nem uma a mais. | 1. **Gestão Dinâmica de 3 Listas:** Marcação com um clique de animes *Assistidos*, lista *Irá Ver* e *Favoritos* com contador de episódios.<br>2. **Feed Dinâmico de Simulcast:** Calendário da temporada atual com lançamentos semanais organizados por dia de exibição.<br>3. **Perfil Social com Mídia:** Upload de avatares de alta qualidade via MinIO S3 e comentários comunitários por anime. |
 | **Canais** | Como o cliente fica sabendo do produto e chega até ele? | - Divulgação em comunidades focadas no Discord e subreddits (r/animebrasil, r/anime).<br>- Conteúdos em redes sociais (TikTok, Reels e X/Twitter) com guias e destaques da temporada de simulcast.<br>- Boca a boca orgânico entre estudantes e grupos de amigos universitários.<br>- Documentação aberta e interativa da API REST para a comunidade técnica. |
-| **Fontes de receita** | Quem paga, quanto e como: os planos do Stripe. | - **Plano Free (R$ 0,00):** Gratuito com travas de capacidade (15 assistidos, 10 irá ver, 5 favoritos).<br>- **Plano Otaku Pro (R$ 12,90/mês):** Cobrança recorrente automatizada via cartão de crédito no **Stripe Checkout**, liberando capacidade ilimitada, upload de avatares e selo VIP. |
+| **Fontes de receita** | Quem paga, quanto e como: os planos do Stripe. | - **Plano Free (R$ 0,00):** Gratuito com listas ilimitadas (assistidos, fila de espera e favoritos) e até 2 animes fixados no perfil.<br>- **Plano Otaku Pro (R$ 12,90/mês):** Cobrança recorrente via **Stripe Checkout**, liberando personalização avançada de perfil (banner com imagens/GIFs, foto de perfil com GIFs animados, até 6 animes fixados), selo VIP dourado e exportação de backup da biblioteca em JSON. |
 | **Estrutura de custos** | O que custa pra manter no ar: infraestrutura, taxas do Stripe, tempo. | - Servidor VPS / Host IaaS para containers Docker (backend, auth-service, log-service, MariaDB, Redis, MinIO).<br>- Taxas transacionais de processamento da Stripe (3,99% + R$ 0,39 por transação aprovada).<br>- Tráfego de dados e armazenamento de mídia (MinIO Object Storage).<br>- Custos de domínio DNS e manutenção de software. |
 | **Métricas-chave** | Os números que você acompanha: cadastros, assinantes, MRR, retenção. | - Usuários Ativos Mensais (MAU) e Semanais (WAU).<br>- Taxa de Conversão de Free para Pro (meta 5%–8%).<br>- Receita Recorrente Mensal (MRR).<br>- Taxa de Retenção e Churn Rate (< 15%).<br>- Volume total de animes catalogados pelos usuários. |
 | **Vantagem injusta** | O que não dá pra copiar fácil: acesso a um público, conhecimento, dados. | - Arquitetura modular resiliente em microsserviços ultrarrápidos com ingestão em Redis Streams, entregando tempos de resposta instantâneos.<br>- Foco direto na experiência limpa e fluida do público brasileiro, sem poluição de banners de anúncios.<br>- Histórico enriquecido e categorizado por temporadas oficiais japonesas. |
@@ -172,7 +174,7 @@ flowchart TD
 
 ### 1. Animes Assistidos (`/api/animes/assistidos`)
 - **Finalidade:** Manter o histórico de obras concluídas ou em progresso, registrando quantidade de episódios vistos e nota pessoal.
-- **Regra Freemium:** Usuários Free registram até **15 animes**. Assinantes Pro têm registros **ilimitados**.
+- **Regra Freemium:** Ilimitado para todos os usuários (Plano Free e Plano Pro).
 - **Endpoints:**
   - `GET /api/animes/assistidos`: Retorna animes assistidos do usuário autenticado.
   - `POST /api/animes/assistidos`: Cadastra um anime no histórico (`anime_id`, `titulo`, `poster_url`, `episodios_vistos`, `total_episodios`, `nota`). Emite o evento `anime_marcado_assistido` no Redis Streams.
@@ -181,25 +183,36 @@ flowchart TD
 
 ### 2. Animes que Irá Ver (`/api/animes/ira-ver`)
 - **Finalidade:** Organizar a fila de planejamento (*watchlist / plan to watch*) para futuras temporadas e férias.
-- **Regra Freemium:** Usuários Free salvam até **10 animes** na fila. Assinantes Pro possuem fila **ilimitada**.
+- **Regra Freemium:** Ilimitada para todos os usuários (Plano Free e Plano Pro).
 - **Endpoints:**
   - `GET /api/animes/ira-ver`: Lista todos os animes pendentes na fila.
   - `POST /api/animes/ira-ver`: Adiciona novo título à fila (`anime_id`, `titulo`, `poster_url`, `previsao_estreia`). Emite evento `anime_adicionado_ira_ver` no Redis Streams.
   - `DELETE /api/animes/ira-ver/:id`: Remove título da fila de espera.
 
 ### 3. Animes Favoritos (`/api/animes/favoritos`)
-- **Finalidade:** Destacar os animes preferidos do usuário no perfil comunitário.
-- **Regra Freemium:** Usuários Free salvam até **5 favoritos**. Assinantes Pro têm favoritos **ilimitados**.
+- **Finalidade:** Destacar os animes preferidos do usuário no perfil comunitário e permitir fixação no topo.
+- **Regra Freemium:** Galeria ilimitada para todos os usuários. Fixação de animes no perfil: até **2 animes** para Plano Free; até **6 animes** para Plano Otaku Pro.
 - **Endpoints:**
-  - `GET /api/animes/favoritos`: Retorna os favoritos do usuário autenticado.
-  - `POST /api/animes/favoritos`: Adiciona anime aos favoritos. Caso o usuário Free tente salvar o 6º favorito, retorna `HTTP 403 Forbidden` (`code: PREMIUM_REQUIRED`). Assinantes Pro salvam sem limite e emitem o evento `anime_favoritado` no Redis.
+  - `GET /api/animes/favoritos`: Retorna os favoritos do usuário autenticado com status de fixado (`fixado: boolean`).
+  - `POST /api/animes/favoritos`: Adiciona anime aos favoritos (Ilimitado).
   - `DELETE /api/animes/favoritos/:id`: Remove o anime dos favoritos.
+  - `PATCH /api/animes/favoritos/:id/pin`: Alterna a fixação do anime no perfil. Usuários Free podem fixar até 2. Assinantes Pro podem fixar até 6. Tentativa além do limite retorna `HTTP 403 Forbidden` (`code: PREMIUM_REQUIRED`).
 
 ### 4. Animes de Simulcast (`/api/animes/simulcast`)
 - **Finalidade:** Rastrear a grade de transmissão simultânea japonesa da temporada atual com datas e dias da semana.
 - **Endpoints:**
   - `GET /api/animes/simulcast`: Retorna todas as obras da temporada agrupadas por dia da semana (segunda a domingo).
   - `GET /api/animes/simulcast/hoje`: Retorna apenas os episódios que vão ao ar na data atual do servidor.
+
+### 5. Perfil, Customização & Backup (`/api/profile`)
+- **Finalidade:** Gestão do perfil, fotos de perfil (avatares), banners e exportação de dados.
+- **Endpoints:**
+  - `GET /api/profile/me`: Dados do perfil, animes fixados, estatísticas de tempo assistido e URLs de fotos/banners.
+  - `PUT /api/profile`: Edição de nome e bio.
+  - `POST /api/profile/photo`: Upload de avatar via MinIO com validação por Magic Bytes. Fotos estáticas para Free; **GIFs animados liberados para Otaku Pro** (403 se Free tentar GIF).
+  - `POST /api/profile/banner`: Upload de banner para o perfil (imagens e GIFs). **Exclusivo para Otaku Pro** (403 se Free tentar).
+  - `DELETE /api/profile/banner`: Remove banner personalizado e restaura padrão.
+  - `GET /api/profile/export`: **Exportação da biblioteca em JSON**. Exclusivo Otaku Pro.
 
 ---
 

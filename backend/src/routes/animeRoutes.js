@@ -12,6 +12,7 @@ import {
   listFavorites,
   addFavorite,
   removeFavorite,
+  togglePinFavorite,
   listSimulcastWeekly,
   listSimulcastToday
 } from '../controllers/animeController.js';
@@ -47,6 +48,7 @@ router.delete('/ira-ver/:id', authenticate, removePlanToWatch);
 router.get('/favoritos', authenticate, listFavorites);
 router.post('/favoritos', authenticate, addFavorite);
 router.delete('/favoritos/:id', authenticate, removeFavorite);
+router.patch('/favoritos/:id/pin', authenticate, togglePinFavorite);
 
 // ============================================================================
 // 5. Comentários Comunitários por Anime (/api/animes/:anime_id/comments)

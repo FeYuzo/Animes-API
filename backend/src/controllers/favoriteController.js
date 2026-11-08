@@ -1,11 +1,13 @@
 import {
   listFavorites,
   addFavorite,
-  removeFavorite
+  removeFavorite,
+  togglePinFavorite
 } from './animeController.js';
 
 export {
   listFavorites,
   addFavorite,
-  removeFavorite
+  removeFavorite,
+  togglePinFavorite
 };

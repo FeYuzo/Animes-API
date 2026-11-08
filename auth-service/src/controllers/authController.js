@@ -92,7 +92,7 @@ export async function login(req, res) {
     const emailNorm = email.trim().toLowerCase();
 
     const [rows] = await pool.query(
-      'SELECT id, nome, email, senha_hash, role, bio, foto_perfil, is_premium, criado_em FROM usuarios WHERE email = ?',
+      'SELECT id, nome, email, senha_hash, role, bio, foto_perfil, banner_perfil, is_premium, criado_em FROM usuarios WHERE email = ?',
       [emailNorm]
     );
 
@@ -116,6 +116,8 @@ export async function login(req, res) {
       bio: userRecord.bio || null,
       foto_perfil: userRecord.foto_perfil || null,
       foto_url: userRecord.foto_perfil ? `/api/profile/photo/${userRecord.foto_perfil}` : null,
+      banner_perfil: userRecord.banner_perfil || null,
+      banner_url: userRecord.banner_perfil ? `/api/profile/banner/${userRecord.banner_perfil}` : null,
       criado_em: userRecord.criado_em
     };
 
@@ -158,7 +160,7 @@ export async function login(req, res) {
 export async function me(req, res) {
   try {
     const [rows] = await pool.query(
-      'SELECT id, nome, email, role, bio, foto_perfil, is_premium, criado_em FROM usuarios WHERE id = ?',
+      'SELECT id, nome, email, role, bio, foto_perfil, banner_perfil, is_premium, criado_em FROM usuarios WHERE id = ?',
       [req.user.id]
     );
 
@@ -176,6 +178,8 @@ export async function me(req, res) {
       bio: record.bio || null,
       foto_perfil: record.foto_perfil || null,
       foto_url: record.foto_perfil ? `/api/profile/photo/${record.foto_perfil}` : null,
+      banner_perfil: record.banner_perfil || null,
+      banner_url: record.banner_perfil ? `/api/profile/banner/${record.banner_perfil}` : null,
       criado_em: record.criado_em
     };
 

@@ -83,6 +83,13 @@ export async function initAuthDatabase(retries = 5, delayMs = 3000) {
         `);
       }
 
+      // Verifica se a coluna 'banner_perfil' já existe
+      const [bannerCols] = await connection.query(`SHOW COLUMNS FROM usuarios LIKE 'banner_perfil'`);
+      if (bannerCols.length === 0) {
+        console.log('[Auth-DB] Adicionando coluna "banner_perfil" na tabela usuarios...');
+        await connection.query(`ALTER TABLE usuarios ADD COLUMN banner_perfil VARCHAR(255) DEFAULT NULL AFTER foto_perfil`);
+      }
+
       // Verifica se a coluna 'is_premium' já existe
       const [premiumCols] = await connection.query(`SHOW COLUMNS FROM usuarios LIKE 'is_premium'`);
       if (premiumCols.length === 0) {
