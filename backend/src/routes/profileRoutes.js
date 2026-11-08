@@ -60,9 +60,7 @@ function handleBannerUploadMiddleware(req, res, next) {
 
 // 1. Rotas públicas de exibição de foto e banner via streaming
 router.get('/photo/{*key}', getProfilePhoto);
-router.get('/photo/*', getProfilePhoto);
 router.get('/banner/{*key}', getProfileBanner);
-router.get('/banner/*', getProfileBanner);
 
 // 2. Exportação da biblioteca em JSON (Recurso exclusivo Otaku Pro)
 router.get('/export', authenticate, exportUserData);

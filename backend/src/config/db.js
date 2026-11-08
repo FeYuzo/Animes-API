@@ -33,6 +33,24 @@ export async function initDatabase(retries = 5, delayMs = 3000) {
 
       console.log('[Catalog-DB] Conexão estabelecida com sucesso. Verificando tabelas do AniTrack...');
 
+      // 0. Garante a existência da tabela usuarios para satisfazer as chaves estrangeiras
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS usuarios (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          nome VARCHAR(100) NOT NULL,
+          email VARCHAR(150) UNIQUE NOT NULL,
+          senha_hash VARCHAR(255) NOT NULL,
+          role VARCHAR(20) NOT NULL DEFAULT 'usuario',
+          bio VARCHAR(500) DEFAULT '',
+          foto_perfil VARCHAR(255) DEFAULT NULL,
+          banner_perfil VARCHAR(255) DEFAULT NULL,
+          is_premium BOOLEAN DEFAULT FALSE,
+          stripe_customer_id VARCHAR(255) DEFAULT NULL,
+          stripe_subscription_id VARCHAR(255) DEFAULT NULL,
+          criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+
       // 1. Tabela de Animes Assistidos
       await connection.query(`
         CREATE TABLE IF NOT EXISTS animes_assistidos (
