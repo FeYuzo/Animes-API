@@ -37,7 +37,7 @@ export async function listAnimes(req, res) {
   try {
     const {
       page = 1,
-      perPage = 20,
+      perPage = 30,
       search = '',
       sort = 'POPULARITY_DESC',
       season,
@@ -49,7 +49,7 @@ export async function listAnimes(req, res) {
 
     const catalog = await getAnimeCatalog({
       page: parseInt(page, 10) || 1,
-      perPage: parseInt(perPage, 10) || 20,
+      perPage: parseInt(perPage, 10) || 30,
       search: search || null,
       sort: sortList,
       season: season || null,
@@ -110,7 +110,7 @@ export async function listAnimes(req, res) {
     return res.json({
       success: true,
       pageInfo: catalog.pageInfo,
-      total: enrichedAnimes.length,
+      total: catalog.pageInfo?.total || enrichedAnimes.length,
       animes: enrichedAnimes,
       movies: enrichedAnimes // retrocompatibilidade com clientes legados
     });

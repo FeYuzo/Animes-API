@@ -55,6 +55,12 @@ const paginationPagesList = document.getElementById('pagination-pages');
 const btnNextPage = document.getElementById('btn-next-page');
 const btnLastPage = document.getElementById('btn-last-page');
 
+// Paginação Superior (Top)
+const catalogTopPagination = document.getElementById('catalog-top-pagination');
+const btnTopPrevPage = document.getElementById('btn-top-prev-page');
+const btnTopNextPage = document.getElementById('btn-top-next-page');
+const topPaginationText = document.getElementById('top-pagination-text');
+
 // Modal de Detalhes do Anime
 const animeModal = document.getElementById('anime-modal');
 const btnCloseAnimeModal = document.getElementById('btn-close-anime-modal');
@@ -160,7 +166,7 @@ let catalogAnimes = [];
 let catalogCurrentPage = 1;
 let catalogTotalPages = 1;
 let catalogTotalItems = 0;
-const CATALOG_PER_PAGE = 24;
+const CATALOG_PER_PAGE = 30;
 let searchDebounceTimer = null;
 let simulcastWeeklyData = null;
 let simulcastTodayData = null;
@@ -262,6 +268,7 @@ function switchView(viewName) {
   simulcastDaysBar?.classList.toggle('hidden', viewName !== 'simulcast');
   document.querySelector('.sort-box')?.classList.toggle('hidden', viewName === 'simulcast');
   catalogPagination?.classList.toggle('hidden', viewName !== 'explore');
+  catalogTopPagination?.classList.toggle('hidden', viewName !== 'explore');
 
   if (viewName === 'explore') {
     currentViewBadge.textContent = 'Catálogo Geral';
@@ -303,6 +310,7 @@ async function loadExploreCatalog(page = 1) {
   animesGrid.innerHTML = '';
   catalogAlert.classList.add('hidden');
   catalogPagination?.classList.add('hidden');
+  catalogTopPagination?.classList.add('hidden');
 
   let sortParam = 'POPULARITY_DESC';
   if (currentSort === 'score-desc') sortParam = 'SCORE_DESC';
@@ -322,6 +330,7 @@ async function loadExploreCatalog(page = 1) {
     if (catalogAnimes.length === 0) {
       showEmptyState('Nenhum anime encontrado', 'Tente pesquisar por outros termos.');
       catalogPagination?.classList.add('hidden');
+      catalogTopPagination?.classList.add('hidden');
     } else {
       renderAnimeCards(catalogAnimes);
       updatePaginationControls(data.pageInfo, data.total);
@@ -331,6 +340,7 @@ async function loadExploreCatalog(page = 1) {
     catalogAlert.className = 'alert alert-danger';
     catalogAlert.classList.remove('hidden');
     catalogPagination?.classList.add('hidden');
+    catalogTopPagination?.classList.add('hidden');
   } finally {
     loadingState.classList.add('hidden');
   }
@@ -342,7 +352,7 @@ async function loadExploreCatalog(page = 1) {
 function updatePaginationControls(pageInfo, totalCount) {
   if (!catalogPagination || currentView !== 'explore') return;
 
-  const total = pageInfo?.total || totalCount || catalogAnimes.length;
+  const total = pageInfo?.total || totalCount || 5000;
   const lastPage = pageInfo?.lastPage || Math.ceil(total / CATALOG_PER_PAGE) || 1;
   const currentPage = pageInfo?.currentPage || catalogCurrentPage || 1;
 
@@ -352,28 +362,35 @@ function updatePaginationControls(pageInfo, totalCount) {
 
   if (catalogTotalPages <= 1 && catalogAnimes.length === 0) {
     catalogPagination.classList.add('hidden');
+    catalogTopPagination?.classList.add('hidden');
     return;
   }
 
   catalogPagination.classList.remove('hidden');
+  catalogTopPagination?.classList.remove('hidden');
+
+  const totalFormatted = catalogTotalItems.toLocaleString('pt-BR');
+  const startItem = (catalogCurrentPage - 1) * CATALOG_PER_PAGE + 1;
+  const endItem = Math.min(catalogCurrentPage * CATALOG_PER_PAGE, catalogTotalItems);
 
   if (paginationInfoText) {
-    const totalFormatted = catalogTotalItems.toLocaleString('pt-BR');
-    paginationInfoText.textContent = `Página ${catalogCurrentPage} de ${catalogTotalPages} (${totalFormatted} animes disponíveis)`;
+    paginationInfoText.innerHTML = `Mostrando animes <strong>${startItem}–${endItem}</strong> de <strong>${totalFormatted}</strong> &bull; Página <strong>${catalogCurrentPage}</strong> de <strong>${catalogTotalPages}</strong>`;
   }
 
-  if (btnFirstPage) {
-    btnFirstPage.disabled = catalogCurrentPage <= 1;
+  if (topPaginationText) {
+    topPaginationText.textContent = `Pág. ${catalogCurrentPage} / ${catalogTotalPages}`;
   }
-  if (btnPrevPage) {
-    btnPrevPage.disabled = catalogCurrentPage <= 1;
-  }
-  if (btnNextPage) {
-    btnNextPage.disabled = catalogCurrentPage >= catalogTotalPages || (pageInfo && pageInfo.hasNextPage === false);
-  }
-  if (btnLastPage) {
-    btnLastPage.disabled = catalogCurrentPage >= catalogTotalPages;
-  }
+
+  const isFirst = catalogCurrentPage <= 1;
+  const isLast = catalogCurrentPage >= catalogTotalPages || (pageInfo && pageInfo.hasNextPage === false);
+
+  if (btnFirstPage) btnFirstPage.disabled = isFirst;
+  if (btnPrevPage) btnPrevPage.disabled = isFirst;
+  if (btnTopPrevPage) btnTopPrevPage.disabled = isFirst;
+
+  if (btnNextPage) btnNextPage.disabled = isLast;
+  if (btnTopNextPage) btnTopNextPage.disabled = isLast;
+  if (btnLastPage) btnLastPage.disabled = isLast;
 
   if (paginationPagesList) {
     paginationPagesList.innerHTML = '';
@@ -1471,11 +1488,14 @@ selectSort?.addEventListener('change', (e) => {
   if (currentView === 'explore') loadExploreCatalog(1);
 });
 
-// Controles de Navegação da Paginação
+// Controles de Navegação da Paginação (Inferior e Superior)
 btnFirstPage?.addEventListener('click', () => goToCatalogPage(1));
 btnPrevPage?.addEventListener('click', () => goToCatalogPage(catalogCurrentPage - 1));
 btnNextPage?.addEventListener('click', () => goToCatalogPage(catalogCurrentPage + 1));
 btnLastPage?.addEventListener('click', () => goToCatalogPage(catalogTotalPages));
+
+btnTopPrevPage?.addEventListener('click', () => goToCatalogPage(catalogCurrentPage - 1));
+btnTopNextPage?.addEventListener('click', () => goToCatalogPage(catalogCurrentPage + 1));
 
 // Seleção de dia no Simulcast
 simulcastDaysBar?.querySelectorAll('.day-tab-btn').forEach((btn) => {

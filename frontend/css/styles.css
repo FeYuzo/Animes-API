@@ -2984,3 +2984,23 @@ button, input, select, textarea {
   box-shadow: 0 0 16px rgba(245, 158, 11, 0.12);
 }
 
+/* Paginação Rápida no Topo (ao lado da barra de ordenação) */
+.catalog-top-pagination {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.25rem 0.6rem;
+}
+
+.top-pagination-text {
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  padding: 0 0.35rem;
+}
+
+
