@@ -37,7 +37,7 @@ function createTransporter() {
  * @param {string} token - Token gerado
  */
 export async function sendPasswordResetEmail(toEmail, toName, resetUrl, token) {
-  const from = process.env.SMTP_FROM || 'Catálogo de Filmes <nao-responda@catalogofilmes.com>';
+  const from = process.env.SMTP_FROM || 'AniTrack <nao-responda@anitrack.com>';
   const transporter = createTransporter();
 
   const htmlContent = `
@@ -142,7 +142,7 @@ export async function sendPasswordResetEmail(toEmail, toName, resetUrl, token) {
     <body>
       <div class="container">
         <div class="header">
-          <div class="brand-title">🎬 CATÁLOGO DE FILMES</div>
+          <div class="brand-title">⛩️ ANITRACK</div>
           <div class="brand-sub">Serviço de Autenticação e Segurança</div>
         </div>
         <div class="content">
@@ -170,7 +170,7 @@ export async function sendPasswordResetEmail(toEmail, toName, resetUrl, token) {
           </p>
         </div>
         <div class="footer">
-          Catálogo de Filmes Tom Hanks · ISW055 Computação em Nuvem<br>
+          AniTrack · Plataforma de Gestão de Animes e Simulcast<br>
           Este é um e-mail transacional gerado automaticamente.
         </div>
       </div>
@@ -181,7 +181,7 @@ export async function sendPasswordResetEmail(toEmail, toName, resetUrl, token) {
   const textContent = `
 Olá, ${toName || 'Usuário'}!
 
-Recebemos uma solicitação para redefinir a senha da sua conta no Catálogo de Filmes.
+Recebemos uma solicitação para redefinir a senha da sua conta no AniTrack.
 
 Acesse o link abaixo para cadastrar sua nova senha:
 ${resetUrl}
@@ -198,7 +198,7 @@ Se você não solicitou esta alteração, ignore esta mensagem.
       const info = await transporter.sendMail({
         from,
         to: toEmail,
-        subject: 'Redefinição de Senha — Catálogo de Filmes',
+        subject: 'Redefinição de Senha — AniTrack',
         text: textContent,
         html: htmlContent
       });
