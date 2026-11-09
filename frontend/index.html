@@ -540,6 +540,28 @@
       <!-- Animes Grid -->
       <div id="animes-grid" class="animes-grid"></div>
 
+      <!-- Paginação do Catálogo Geral -->
+      <div id="catalog-pagination" class="pagination-container hidden">
+        <div class="pagination-info">
+          <span id="pagination-info-text">Página 1 de 1</span>
+        </div>
+        <div class="pagination-controls">
+          <button type="button" id="btn-first-page" class="btn btn-outline btn-pagination" title="Primeira página">
+            &laquo; Primeira
+          </button>
+          <button type="button" id="btn-prev-page" class="btn btn-outline btn-pagination" title="Página anterior">
+            &lsaquo; Anterior
+          </button>
+          <div id="pagination-pages" class="pagination-pages-list"></div>
+          <button type="button" id="btn-next-page" class="btn btn-outline btn-pagination" title="Próxima página">
+            Próxima &rsaquo;
+          </button>
+          <button type="button" id="btn-last-page" class="btn btn-outline btn-pagination" title="Última página">
+            Última &raquo;
+          </button>
+        </div>
+      </div>
+
     </div>
   </main>
 
@@ -904,6 +926,18 @@
             <button type="button" id="btn-profile-subscribe" class="btn btn-gold btn-sm">
               <span>Assinar Otaku Pro</span>
             </button>
+          </div>
+
+          <!-- Otaku Pro Active Card (Exibido para quem já é Membro Pro) -->
+          <div id="profile-pro-active-box" class="profile-pro-box pro-active-box hidden">
+            <div class="pro-box-left">
+              <div class="pro-box-icon">👑</div>
+              <div>
+                <h4 class="pro-box-title text-gold">Sua Assinatura Otaku Pro está Ativa</h4>
+                <p class="pro-box-desc">Você tem acesso VIP liberado: GIFs no avatar e banner, até 6 animes fixados no perfil e exportação em backup JSON.</p>
+              </div>
+            </div>
+            <span class="user-premium-badge">⭐ PRO ATIVO</span>
           </div>
 
           <div id="profile-alert" class="alert hidden"></div>

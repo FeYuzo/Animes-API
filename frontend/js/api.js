@@ -344,5 +344,12 @@ export const api = {
 
   async getStripeStatus() {
     return this.request('/stripe/status');
+  },
+
+  async verifyStripeSession(sessionId) {
+    return this.request('/stripe/verify-session', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId })
+    });
   }
 };

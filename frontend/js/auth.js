@@ -90,15 +90,20 @@ export function showAppView(user) {
   }
 
   // Badge Otaku Pro
-  const isPremium = Boolean(user.is_premium);
+  updateNavPremiumUI(user);
+
+  updateNavUserAvatar(user.foto_url);
+}
+
+export function updateNavPremiumUI(user) {
+  if (!user) return;
+  const isPremium = Boolean(user.is_premium || user.role === 'admin');
   if (navUserPremium) {
     navUserPremium.classList.toggle('hidden', !isPremium);
   }
   if (btnNavPremium) {
     btnNavPremium.classList.toggle('hidden', isPremium);
   }
-
-  updateNavUserAvatar(user.foto_url);
 }
 
 export function updateNavUserAvatar(fotoUrl) {
@@ -219,12 +224,28 @@ export async function initAuth() {
 
   // 1. Checa retorno de pagamento
   const paymentStatus = urlParams.get('payment');
+  const sessionId = urlParams.get('session_id');
+
   if (paymentStatus) {
     window.history.replaceState({}, document.title, window.location.pathname);
     if (paymentStatus === 'success') {
-      setTimeout(() => {
-        alert('🎉 Bem-vindo ao Otaku Pro! Sua assinatura foi aprovada com sucesso. Você agora pode personalizar seu banner com imagens e GIFs, usar avatar animado com GIF, fixar até 6 animes favoritos no perfil e exportar seu catálogo!');
-      }, 500);
+      (async () => {
+        try {
+          await api.verifyStripeSession(sessionId || 'sync');
+          const res = await api.me();
+          if (res && res.user) {
+            api.setUser(res.user);
+            showAppView(res.user);
+            updateNavPremiumUI(res.user);
+            window.dispatchEvent(new CustomEvent('auth:login', { detail: res.user }));
+          }
+        } catch (err) {
+          console.warn('[Stripe] Erro ao sincronizar sessão pós-pagamento:', err);
+        }
+        setTimeout(() => {
+          alert('🎉 Bem-vindo ao Otaku Pro! Sua assinatura foi aprovada e ativada com sucesso. Você agora tem acesso total a avatares e banners com GIFs, até 6 animes fixados no perfil e exportação ilimitada do catálogo!');
+        }, 400);
+      })();
     } else if (paymentStatus === 'cancel') {
       setTimeout(() => {
         alert('O processo de pagamento foi cancelado. Você pode assinar o Otaku Pro a qualquer momento.');
@@ -246,11 +267,26 @@ export async function initAuth() {
 
   if (token && user) {
     showAppView(user);
+    updateNavPremiumUI(user);
 
     try {
+      // Sincroniza status do Stripe proativamente
+      try {
+        const stripeStatus = await api.getStripeStatus();
+        if (stripeStatus && stripeStatus.is_premium) {
+          user.is_premium = true;
+          api.setUser(user);
+          updateNavPremiumUI(user);
+        }
+      } catch (_) {
+        // Silencioso se rota do Stripe não estiver acessível
+      }
+
       const res = await api.me();
       if (res && res.user) {
+        api.setUser(res.user);
         showAppView(res.user);
+        updateNavPremiumUI(res.user);
         window.dispatchEvent(new CustomEvent('auth:login', { detail: res.user }));
       }
     } catch {

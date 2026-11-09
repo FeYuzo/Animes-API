@@ -4,7 +4,7 @@
  */
 
 import { api } from './api.js';
-import { initAuth, updateNavUserAvatar, openPremiumModal } from './auth.js';
+import { initAuth, updateNavUserAvatar, updateNavPremiumUI, openPremiumModal } from './auth.js';
 
 // ============================================================================
 // ELEMENTOS DO DOM
@@ -45,6 +45,15 @@ const emptyDesc = document.getElementById('empty-desc');
 const btnEmptyReset = document.getElementById('btn-empty-reset');
 const catalogAlert = document.getElementById('catalog-alert');
 const animesGrid = document.getElementById('animes-grid');
+
+// Paginação do Catálogo Geral
+const catalogPagination = document.getElementById('catalog-pagination');
+const paginationInfoText = document.getElementById('pagination-info-text');
+const btnFirstPage = document.getElementById('btn-first-page');
+const btnPrevPage = document.getElementById('btn-prev-page');
+const paginationPagesList = document.getElementById('pagination-pages');
+const btnNextPage = document.getElementById('btn-next-page');
+const btnLastPage = document.getElementById('btn-last-page');
 
 // Modal de Detalhes do Anime
 const animeModal = document.getElementById('anime-modal');
@@ -148,6 +157,11 @@ let currentSort = 'popularity-desc';
 let activeSimulcastDay = 'hoje';
 
 let catalogAnimes = [];
+let catalogCurrentPage = 1;
+let catalogTotalPages = 1;
+let catalogTotalItems = 0;
+const CATALOG_PER_PAGE = 24;
+let searchDebounceTimer = null;
 let simulcastWeeklyData = null;
 let simulcastTodayData = null;
 let watchedState = [];
@@ -247,12 +261,13 @@ function switchView(viewName) {
   // Atualiza títulos e controles visíveis
   simulcastDaysBar?.classList.toggle('hidden', viewName !== 'simulcast');
   document.querySelector('.sort-box')?.classList.toggle('hidden', viewName === 'simulcast');
+  catalogPagination?.classList.toggle('hidden', viewName !== 'explore');
 
   if (viewName === 'explore') {
     currentViewBadge.textContent = 'Catálogo Geral';
     catalogHeading.textContent = 'Explorar Animes';
     catalogSubheading.textContent = 'Obras em alta, populares e lançamentos sincronizados via AniList';
-    loadExploreCatalog();
+    loadExploreCatalog(1);
   } else if (viewName === 'simulcast') {
     currentViewBadge.textContent = 'Simulcast Sazonal';
     catalogHeading.textContent = 'Grade Semanal de Simulcast';
@@ -279,13 +294,15 @@ function switchView(viewName) {
 }
 
 /**
- * Carrega e renderiza o catálogo geral
+ * Carrega e renderiza o catálogo geral com paginação
  */
-async function loadExploreCatalog() {
+async function loadExploreCatalog(page = 1) {
+  catalogCurrentPage = Math.max(1, parseInt(page, 10) || 1);
   loadingState.classList.remove('hidden');
   emptyState.classList.add('hidden');
   animesGrid.innerHTML = '';
   catalogAlert.classList.add('hidden');
+  catalogPagination?.classList.add('hidden');
 
   let sortParam = 'POPULARITY_DESC';
   if (currentSort === 'score-desc') sortParam = 'SCORE_DESC';
@@ -294,7 +311,8 @@ async function loadExploreCatalog() {
 
   try {
     const data = await api.getAnimes({
-      perPage: 30,
+      page: catalogCurrentPage,
+      perPage: CATALOG_PER_PAGE,
       search: currentSearch || undefined,
       sort: sortParam
     });
@@ -303,16 +321,110 @@ async function loadExploreCatalog() {
 
     if (catalogAnimes.length === 0) {
       showEmptyState('Nenhum anime encontrado', 'Tente pesquisar por outros termos.');
+      catalogPagination?.classList.add('hidden');
     } else {
       renderAnimeCards(catalogAnimes);
+      updatePaginationControls(data.pageInfo, data.total);
     }
   } catch (err) {
     catalogAlert.textContent = `Aviso: ${err.message || 'Erro ao carregar catálogo na AniList.'}`;
     catalogAlert.className = 'alert alert-danger';
     catalogAlert.classList.remove('hidden');
+    catalogPagination?.classList.add('hidden');
   } finally {
     loadingState.classList.add('hidden');
   }
+}
+
+/**
+ * Atualiza os controles de paginação (anterior, próxima, páginas numeradas)
+ */
+function updatePaginationControls(pageInfo, totalCount) {
+  if (!catalogPagination || currentView !== 'explore') return;
+
+  const total = pageInfo?.total || totalCount || catalogAnimes.length;
+  const lastPage = pageInfo?.lastPage || Math.ceil(total / CATALOG_PER_PAGE) || 1;
+  const currentPage = pageInfo?.currentPage || catalogCurrentPage || 1;
+
+  catalogTotalPages = Math.max(1, lastPage);
+  catalogCurrentPage = Math.min(currentPage, catalogTotalPages);
+  catalogTotalItems = total;
+
+  if (catalogTotalPages <= 1 && catalogAnimes.length === 0) {
+    catalogPagination.classList.add('hidden');
+    return;
+  }
+
+  catalogPagination.classList.remove('hidden');
+
+  if (paginationInfoText) {
+    const totalFormatted = catalogTotalItems.toLocaleString('pt-BR');
+    paginationInfoText.textContent = `Página ${catalogCurrentPage} de ${catalogTotalPages} (${totalFormatted} animes disponíveis)`;
+  }
+
+  if (btnFirstPage) {
+    btnFirstPage.disabled = catalogCurrentPage <= 1;
+  }
+  if (btnPrevPage) {
+    btnPrevPage.disabled = catalogCurrentPage <= 1;
+  }
+  if (btnNextPage) {
+    btnNextPage.disabled = catalogCurrentPage >= catalogTotalPages || (pageInfo && pageInfo.hasNextPage === false);
+  }
+  if (btnLastPage) {
+    btnLastPage.disabled = catalogCurrentPage >= catalogTotalPages;
+  }
+
+  if (paginationPagesList) {
+    paginationPagesList.innerHTML = '';
+
+    const delta = 2;
+    const range = [];
+    for (let i = 1; i <= catalogTotalPages; i++) {
+      if (i === 1 || i === catalogTotalPages || (i >= catalogCurrentPage - delta && i <= catalogCurrentPage + delta)) {
+        range.push(i);
+      }
+    }
+
+    let prevPageNum = null;
+    for (const pageNum of range) {
+      if (prevPageNum) {
+        if (pageNum - prevPageNum === 2) {
+          paginationPagesList.appendChild(createPageButton(prevPageNum + 1));
+        } else if (pageNum - prevPageNum > 2) {
+          const ellipsis = document.createElement('span');
+          ellipsis.className = 'page-number-btn ellipsis';
+          ellipsis.textContent = '...';
+          paginationPagesList.appendChild(ellipsis);
+        }
+      }
+      paginationPagesList.appendChild(createPageButton(pageNum));
+      prevPageNum = pageNum;
+    }
+  }
+}
+
+function createPageButton(pageNum) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = `page-number-btn ${pageNum === catalogCurrentPage ? 'active' : ''}`;
+  btn.textContent = String(pageNum);
+  btn.title = `Ir para página ${pageNum}`;
+  if (pageNum === catalogCurrentPage) {
+    btn.setAttribute('aria-current', 'page');
+  } else {
+    btn.addEventListener('click', () => {
+      goToCatalogPage(pageNum);
+    });
+  }
+  return btn;
+}
+
+function goToCatalogPage(pageNum) {
+  if (pageNum < 1 || pageNum > catalogTotalPages || pageNum === catalogCurrentPage) return;
+  loadExploreCatalog(pageNum);
+  const anchor = document.getElementById('catalog-heading') || document.getElementById('animes-grid');
+  anchor?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /**
@@ -942,6 +1054,8 @@ async function openProfileModal() {
       currentUser.foto_perfil = profile.foto_perfil;
       currentUser.banner_perfil = profile.banner_perfil;
       api.setUser(currentUser);
+      updateNavPremiumUI(currentUser);
+      updateCapacityBadge();
     }
 
     // 1. Atualização do Banner do Perfil
@@ -1056,8 +1170,9 @@ async function openProfileModal() {
       }
     }
 
-    // Promo box do Otaku Pro (esconde se já for Pro)
+    // Promo box do Otaku Pro (esconde se já for Pro) e Active Box (mostra se já for Pro)
     document.getElementById('profile-pro-promo')?.classList.toggle('hidden', isPro);
+    document.getElementById('profile-pro-active-box')?.classList.toggle('hidden', !isPro);
 
   } catch (err) {
     showToast(`Erro ao carregar perfil: ${err.message}`, 'error');
@@ -1260,6 +1375,7 @@ async function handleToggleProPlan() {
     if (currentUser) {
       currentUser.is_premium = res.is_premium;
       api.setUser(currentUser);
+      updateNavPremiumUI(currentUser);
     }
     await refreshUserData();
     reRenderCurrentView();
@@ -1328,20 +1444,38 @@ brandLogo?.addEventListener('click', () => {
 inputSearch?.addEventListener('input', (e) => {
   currentSearch = e.target.value.trim();
   btnClearSearch.classList.toggle('hidden', !currentSearch);
-  reRenderCurrentView();
+
+  if (currentView === 'explore') {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      loadExploreCatalog(1);
+    }, 400);
+  } else {
+    reRenderCurrentView();
+  }
 });
 
 btnClearSearch?.addEventListener('click', () => {
   inputSearch.value = '';
   currentSearch = '';
   btnClearSearch.classList.add('hidden');
-  reRenderCurrentView();
+  if (currentView === 'explore') {
+    loadExploreCatalog(1);
+  } else {
+    reRenderCurrentView();
+  }
 });
 
 selectSort?.addEventListener('change', (e) => {
   currentSort = e.target.value;
-  if (currentView === 'explore') loadExploreCatalog();
+  if (currentView === 'explore') loadExploreCatalog(1);
 });
+
+// Controles de Navegação da Paginação
+btnFirstPage?.addEventListener('click', () => goToCatalogPage(1));
+btnPrevPage?.addEventListener('click', () => goToCatalogPage(catalogCurrentPage - 1));
+btnNextPage?.addEventListener('click', () => goToCatalogPage(catalogCurrentPage + 1));
+btnLastPage?.addEventListener('click', () => goToCatalogPage(catalogTotalPages));
 
 // Seleção de dia no Simulcast
 simulcastDaysBar?.querySelectorAll('.day-tab-btn').forEach((btn) => {

@@ -11,7 +11,13 @@ export async function createCheckoutSession(req, res) {
     const userId = req.user.id;
     const userEmail = req.user.email;
     const userName = req.user.nome;
-    const appUrl = (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+    const clientOrigin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null);
+    const forwardedProto = req.headers['x-forwarded-proto'] || req.protocol;
+    const forwardedHost = req.headers['x-forwarded-host'] || req.get('host');
+    const detectedUrl = `${forwardedProto}://${forwardedHost}`.replace(/\/$/, '');
+    const appUrl = (process.env.APP_URL && !process.env.APP_URL.includes('localhost'))
+      ? process.env.APP_URL.replace(/\/$/, '')
+      : (clientOrigin || detectedUrl || 'http://localhost:3000');
 
     const isPlaceholderKey = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.includes('placeholder');
     if (!stripe || isPlaceholderKey) {
@@ -247,16 +253,167 @@ export async function getSubscriptionStatus(req, res) {
     }
 
     const user = rows[0];
+    let isPremium = Boolean(user.is_premium);
+    let customerId = user.stripe_customer_id;
+    let subscriptionId = user.stripe_subscription_id;
+
+    const isPlaceholderKey = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.includes('placeholder');
+
+    // Auto-sincronização preventiva com o Stripe se o banco ainda acusar plano Free
+    if (!isPremium && stripe && !isPlaceholderKey) {
+      try {
+        if (subscriptionId) {
+          const sub = await stripe.subscriptions.retrieve(subscriptionId).catch(() => null);
+          if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
+            isPremium = true;
+          }
+        } else if (customerId) {
+          const subs = await stripe.subscriptions.list({ customer: customerId, status: 'active', limit: 1 }).catch(() => ({ data: [] }));
+          if (subs.data && subs.data.length > 0) {
+            isPremium = true;
+            subscriptionId = subs.data[0].id;
+          }
+        }
+
+        // Se ainda não achou, verifica sessões recentes pagas para este usuário
+        if (!isPremium) {
+          const recentSessions = await stripe.checkout.sessions.list({ limit: 15 }).catch(() => ({ data: [] }));
+          const matchedSession = (recentSessions.data || []).find((s) =>
+            (s.client_reference_id === String(userId) || s.metadata?.userId === String(userId) || (s.customer_email && s.customer_email.toLowerCase() === (user.email || '').toLowerCase())) &&
+            (s.payment_status === 'paid' || s.status === 'complete')
+          );
+
+          if (matchedSession) {
+            isPremium = true;
+            customerId = typeof matchedSession.customer === 'string' ? matchedSession.customer : matchedSession.customer?.id || customerId;
+            subscriptionId = typeof matchedSession.subscription === 'string' ? matchedSession.subscription : matchedSession.subscription?.id || subscriptionId;
+          }
+        }
+
+        if (isPremium) {
+          await pool.query(
+            'UPDATE usuarios SET is_premium = TRUE, stripe_customer_id = ?, stripe_subscription_id = ? WHERE id = ?',
+            [customerId || null, subscriptionId || null, userId]
+          );
+          console.log(`[Stripe] Usuário ${userId} sincronizado e promovido a Premium via getSubscriptionStatus.`);
+        }
+      } catch (syncErr) {
+        console.warn('[Stripe] Aviso ao tentar auto-sincronizar assinatura:', syncErr.message);
+      }
+    }
 
     return res.json({
       success: true,
       user_id: user.id,
-      is_premium: Boolean(user.is_premium),
-      stripe_customer_id: user.stripe_customer_id || null,
-      stripe_subscription_id: user.stripe_subscription_id || null
+      is_premium: isPremium,
+      stripe_customer_id: customerId || null,
+      stripe_subscription_id: subscriptionId || null
     });
   } catch (err) {
     console.error('[Stripe] Erro ao consultar status da assinatura:', err);
     return res.status(500).json({ error: 'Erro ao consultar status da assinatura.' });
+  }
+}
+
+/**
+ * Verifica e sincroniza uma Checkout Session do Stripe imediatamente após o retorno do usuário
+ * Rota: POST /api/stripe/verify-session
+ */
+export async function verifyCheckoutSession(req, res) {
+  try {
+    const { sessionId } = req.body;
+    const authUserId = req.user?.id;
+
+    const isPlaceholderKey = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.includes('placeholder');
+    if (!stripe || isPlaceholderKey) {
+      if (authUserId) {
+        await pool.query('UPDATE usuarios SET is_premium = TRUE WHERE id = ?', [authUserId]);
+      }
+      return res.json({
+        success: true,
+        paid: true,
+        is_premium: true,
+        testMode: true,
+        message: 'Modo de teste: Assinatura ativada imediatamente!'
+      });
+    }
+
+    let session = null;
+    if (sessionId && sessionId !== 'sync' && sessionId !== 'latest') {
+      try {
+        session = await stripe.checkout.sessions.retrieve(sessionId);
+      } catch (retrieveErr) {
+        console.warn(`[Stripe] Não foi possível recuperar sessão por ID (${sessionId}): ${retrieveErr.message}`);
+      }
+    }
+
+    const [userRows] = authUserId ? await pool.query('SELECT email FROM usuarios WHERE id = ?', [authUserId]) : [[]];
+    const userEmail = userRows[0]?.email;
+
+    // Se não encontrou por sessionId, busca na lista de sessões recentes
+    if (!session && authUserId) {
+      const recentSessions = await stripe.checkout.sessions.list({ limit: 15 }).catch(() => ({ data: [] }));
+      session = (recentSessions.data || []).find((s) =>
+        (s.client_reference_id === String(authUserId) || s.metadata?.userId === String(authUserId) || (userEmail && s.customer_email && s.customer_email.toLowerCase() === userEmail.toLowerCase())) &&
+        (s.payment_status === 'paid' || s.status === 'complete')
+      );
+    }
+
+    if (!session) {
+      // Se não encontrou sessão paga nem correspondente
+      if (sessionId && sessionId !== 'sync') {
+        return res.status(404).json({ error: 'Sessão do Stripe não encontrada ou ainda pendente.' });
+      }
+      return res.json({
+        success: true,
+        paid: false,
+        is_premium: false,
+        message: 'Nenhum pagamento confirmado encontrado.'
+      });
+    }
+
+    const targetUserId = session.client_reference_id || session.metadata?.userId || authUserId;
+    const isPaid = session.payment_status === 'paid' || session.status === 'complete';
+
+    if (isPaid && targetUserId) {
+      const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id || null;
+      const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id || null;
+
+      await pool.query(
+        `UPDATE usuarios 
+         SET is_premium = TRUE, stripe_customer_id = ?, stripe_subscription_id = ? 
+         WHERE id = ?`,
+        [customerId, subscriptionId, targetUserId]
+      );
+
+      logAuditEvent({
+        usuario_id: parseInt(targetUserId, 10),
+        acao: 'upgrade_premium_confirmado',
+        ip: req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || req.ip,
+        detalhes: {
+          modo: 'verify_checkout_session',
+          sessionId: session.id,
+          customerId,
+          subscriptionId
+        }
+      });
+
+      return res.json({
+        success: true,
+        paid: true,
+        is_premium: true,
+        message: 'Assinatura Otaku Pro confirmada e ativada com sucesso!'
+      });
+    }
+
+    return res.json({
+      success: true,
+      paid: isPaid,
+      is_premium: false,
+      status: session.payment_status
+    });
+  } catch (err) {
+    console.error('[Stripe] Erro ao verificar checkout session:', err);
+    return res.status(500).json({ error: `Erro ao verificar sessão do Stripe: ${err.message}` });
   }
 }

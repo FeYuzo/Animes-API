@@ -1,5 +1,5 @@
 import express from 'express';
-import { createCheckoutSession, handleWebhook, getSubscriptionStatus } from '../controllers/stripeController.js';
+import { createCheckoutSession, handleWebhook, getSubscriptionStatus, verifyCheckoutSession } from '../controllers/stripeController.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -9,6 +9,9 @@ router.post('/webhook', express.raw({ type: 'application/json' }), handleWebhook
 
 // Checkout Session (requer login)
 router.post('/create-checkout-session', authenticate, createCheckoutSession);
+
+// Verificação imediata pós-retorno do checkout (requer login ou valida pelo sessionId)
+router.post('/verify-session', authenticate, verifyCheckoutSession);
 
 // Status da assinatura (requer login)
 router.get('/status', authenticate, getSubscriptionStatus);
