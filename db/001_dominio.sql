@@ -4,8 +4,9 @@
 -- Domínio: Plataforma SaaS de Gestão de Animes, Simulcasts e Listas Pessoais
 -- ============================================================================
 
-CREATE DATABASE IF NOT EXISTS anitrack_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE anitrack_db;
+-- Para execução local em ambiente com permissão de criação de bases:
+-- CREATE DATABASE IF NOT EXISTS anitrack_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- USE anitrack_db;
 
 -- ----------------------------------------------------------------------------
 -- 1. TABELA: usuarios (Entidade de Usuários e Autenticação Central)
@@ -15,7 +16,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nome VARCHAR(100) NOT NULL,
   email VARCHAR(150) UNIQUE NOT NULL,
   senha_hash VARCHAR(255) NOT NULL,
-  role VARCHAR(20) NOT NULL DEFAULT 'otaku',
+  role VARCHAR(20) NOT NULL DEFAULT 'usuario',
   bio VARCHAR(500) DEFAULT '',
   foto_perfil VARCHAR(255) DEFAULT NULL,
   banner_perfil VARCHAR(255) DEFAULT NULL,
@@ -128,13 +129,13 @@ CREATE TABLE IF NOT EXISTS reset_tokens (
 -- Hash Bcrypt correspondente: $2b$10$9LX8NRtit7sw3VwbnzjCCuFVbHYLgZm72jAbbRgQ776gkoFZFPdiW
 -- ============================================================================
 
--- Inserção de Usuários com os 3 Papéis do Negócio: admin, critico, otaku
+-- Inserção de Usuários com os Papéis do Negócio: admin, critico, usuario (otaku)
 INSERT INTO usuarios (id, nome, email, senha_hash, role, bio, is_premium)
 VALUES 
   (1, 'Admin AniTrack', 'admin@anitrack.com', '$2b$10$9LX8NRtit7sw3VwbnzjCCuFVbHYLgZm72jAbbRgQ776gkoFZFPdiW', 'admin', 'Administrador da plataforma e curador oficial do catálogo.', TRUE),
   (2, 'Crítico Renan', 'critico@anitrack.com', '$2b$10$9LX8NRtit7sw3VwbnzjCCuFVbHYLgZm72jAbbRgQ776gkoFZFPdiW', 'critico', 'Crítico especializado em animes sazonais e resenhas da comunidade.', TRUE),
-  (3, 'Otaku João', 'otaku@anitrack.com', '$2b$10$9LX8NRtit7sw3VwbnzjCCuFVbHYLgZm72jAbbRgQ776gkoFZFPdiW', 'otaku', 'Fã assíduo de shonen e animes de fantasia.', FALSE)
-ON DUPLICATE KEY UPDATE nome = VALUES(nome);
+  (3, 'Otaku João', 'otaku@anitrack.com', '$2b$10$9LX8NRtit7sw3VwbnzjCCuFVbHYLgZm72jAbbRgQ776gkoFZFPdiW', 'usuario', 'Fã assíduo de shonen e animes de fantasia.', FALSE)
+ON DUPLICATE KEY UPDATE nome = VALUES(nome), role = VALUES(role);
 
 -- Inserção de Animes do Catálogo Local (Recurso Principal)
 INSERT INTO animes (id, titulo, titulo_romaji, sinopse, poster_url, banner_url, episodios, status, formato, temporada, ano, generos, score)

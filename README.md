@@ -1,7 +1,11 @@
 # 🌸 AniTrack — Plataforma & API SaaS de Gestão de Animes e Simulcast
 
-> **Atividade Prática:** Evolução de Arquitetura em Microsserviços e SaaS em Nuvem  
-> **Repositório:** Animes-API (Substituição e Evolução do Catálogo Original)
+> **Disciplina:** ISW055 - Introdução à Computação em Nuvem  
+> **Professor:** Allan Siriani ([@siriani](https://github.com/siriani))  
+> **Repositório:** Animes-API (Evolução de Arquitetura em Microsserviços e SaaS em Nuvem)  
+> **🌐 URL do Sistema no Ar (Subdomínio da Disciplina):** [http://felipe-shida.siriani.com.br](http://felipe-shida.siriani.com.br) *(ou `http://35.226.64.52:8206`)*  
+> **🚢 Portainer (Gestão de Containers & Stacks):** [http://35.226.64.52:9000](http://35.226.64.52:9000)  
+> **🗄️ Script de Migração e Seed do Banco:** Versionado em [`db/001_dominio.sql`](./db/001_dominio.sql)  
 
 ---
 
@@ -218,7 +222,7 @@ flowchart TD
 
 ## 🏛️ Arquitetura de Microsserviços & Isolamento de Rede
 
-A solução mantém o rigor técnico de microsserviços em rede interna isolada:
+A solução opera com rigor técnico de **Microsserviços desacoplados** rodando sobre uma rede bridge isolada (`internal-net`), expondo publicamente apenas a porta do Catálogo através do subdomínio individual:
 
 ```mermaid
 flowchart TD
@@ -226,14 +230,14 @@ flowchart TD
         Browser["🖥️ Navegador Web / Mobile\n(SPA & Consumidores da API REST)"]
     end
 
-    subgraph INGRESS["🚪 Ponto de Entrada Host"]
-        PortaPublica["Ponto de Entrada Host (:8206 -> :3000)\nHTTPS / HTTP"]
+    subgraph INGRESS["🚪 Ponto de Entrada Host / Subdomínio"]
+        PortaPublica["🌐 Ingress Host / Subdomínio Aluno\n(felipe-shida.siriani.com.br :8206 -> :3000)\nHTTPS / HTTP"]
     end
 
     subgraph DOCKER_NET["🐳 Rede Interna Docker (internal-net)"]
         subgraph CATALOG_CONTAINER["📦 Container AniTrack API (catalog)"]
             CatalogApp["🚀 Backend & API REST\n(Node.js / Express :3000)\nAssistidos, Irá Ver, Favoritos, Simulcast"]
-            ProxyPhoto["🖼️ Streaming Proxy de Avatares\n(/api/profile/photo/:key)"]
+            ProxyPhoto["🖼️ Streaming Proxy de Avatares & Banners\n(/api/profile/photo/* & /banner/*)"]
         end
 
         subgraph AUTH_CONTAINER["📦 Container Autenticação (auth-service)"]
@@ -251,24 +255,40 @@ flowchart TD
         end
     end
 
-    subgraph EXTERNAL_SERVICES["☁️ Serviços Externos em Nuvem (SaaS)"]
+    subgraph EXTERNAL_SERVICES["☁️ Serviços Externos em Nuvem (SaaS / APIs)"]
+        AniList["🌸 AniList GraphQL API\n(https://graphql.anilist.co)\nCatálogo da Temporada & Simulcast"]
         Stripe["💳 Stripe Payments\nAssinaturas Otaku Pro & Webhook"]
         SMTP["✉️ Servidor SMTP Transacional\nMailtrap / Brevo"]
     end
 
     Browser -->|HTTP/HTTPS :8206| PortaPublica
     PortaPublica --> CatalogApp
-    CatalogApp -->|HTTP Interno :4000| AuthApp
-    CatalogApp -->|HTTP Interno :5000| LogApp
-    AuthApp -->|HTTP Interno :5000| LogApp
-    CatalogApp -->|MySQL Protocol :3306| MariaDB
-    AuthApp -->|MySQL Protocol :3306| MariaDB
-    LogApp -->|Redis RESP :6379| Redis
-    CatalogApp -->|S3 API HTTP :9000| MinIO
-    ProxyPhoto -->|getObject| MinIO
+    CatalogApp -->|HTTP REST Interno :4000\nValidação RBAC & Tokens JWT| AuthApp
+    CatalogApp -->|HTTP REST Interno :5000\nIngestão Assíncrona de Auditoria| LogApp
+    AuthApp -->|HTTP REST Interno :5000\nAuditoria de Login/Logout/403| LogApp
+    CatalogApp -->|Protocolo MySQL :3306\nPool de Conexões Transacionais| MariaDB
+    AuthApp -->|Protocolo MySQL :3306\nGestão de Usuários & Tokens| MariaDB
+    LogApp -->|Protocolo Redis RESP :6379\nXADD no Stream audit:events| Redis
+    CatalogApp -->|S3 API HTTP :9000\nUpload Multipart & Magic Bytes| MinIO
+    ProxyPhoto -->|S3 GetObject| MinIO
+    CatalogApp -->|GraphQL POST / HTTPS :443\nSincronização Simulcast| AniList
     CatalogApp -->|HTTPS Checkout / Webhook| Stripe
-    AuthApp -->|SMTP / TLS :2525| SMTP
+    AuthApp -->|SMTP / TLS :2525\nE-mails com Expiração Real| SMTP
 ```
+
+### 📡 Como os Serviços Conversam (Matriz de Comunicação Inter-Serviços)
+
+| Origem | Destino | Protocolo / Porta | Tipo de Comunicação | Finalidade & Dados Trafegados |
+| :--- | :--- | :---: | :---: | :--- |
+| **Navegador (Client)** | **Catalog (`:8206`)** | `HTTP / HTTPS` | Síncrono (REST) | Carregamento da SPA, chamadas de API, headers `Authorization: Bearer <JWT>` e cookies de sessão. |
+| **Catalog** | **Auth-Service** | `HTTP :4000` (Interno) | Síncrono (REST) | Verificação de tokens JWT, login, cadastro e checagem centralizada de papéis e permissões (`/api/auth/verify-permission`). |
+| **Catalog / Auth** | **Log-Service** | `HTTP :5000` (Interno) | Assíncrono (*Fire-and-forget*) | Envio de eventos de negócio em background (`POST /api/logs/events`): `anime_marcado_assistido`, `permissao_negada`, `login`. |
+| **Log-Service** | **Redis** | `RESP :6379` (Interno) | Alta Performance ($O(1)$) | Gravação imutável no stream `audit:events` via comando `XADD` com persistência Append-Only File (AOF). |
+| **Catalog / Auth** | **MariaDB Cloud** | `MySQL Protocol :3306` | Síncrono (Connection Pool) | Consultas relacionais e transações SQL com `mysql2/promise` para usuários, animes, favoritos, notas e comentários. |
+| **Catalog** | **MinIO S3** | `S3 API HTTP :9000` | Síncrono (AWS S3 SDK) | Upload de fotos de perfil e banners validados por Magic Bytes no bucket `perfil-usuarios`, com streaming proxy para o cliente. |
+| **Catalog** | **AniList API** | `HTTPS :443` | Síncrono (GraphQL) | Consultas de simulcast e catálogo da temporada via `POST https://graphql.anilist.co`. |
+| **Catalog** | **Stripe API** | `HTTPS :443` | Síncrono / Webhook | Criação de sessões de checkout do Plano Otaku Pro e recebimento assíncrono de webhooks assinados criptograficamente. |
+| **Auth-Service** | **SMTP Mailtrap** | `SMTP / TLS :2525` | Síncrono (Nodemailer) | Disparo transacional de e-mails com links temporários e tokens criptografados para redefinição de senha. |
 
 ---
 
@@ -348,6 +368,55 @@ CREATE TABLE IF NOT EXISTS comentarios (
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
+
+---
+
+## 🗄️ Script de Migração e Seed do Banco de Dados Versionado
+
+O repositório inclui o script SQL oficial completo e idempotente para criação das tabelas e semeadura de dados no caminho:
+👉 [`db/001_dominio.sql`](./db/001_dominio.sql)
+
+### 📦 Conteúdo do Script (`db/001_dominio.sql`)
+
+1. **Migrações (DDL):**
+   - Criação de todas as 7 tabelas do domínio com `CREATE TABLE IF NOT EXISTS`;
+   - Definição de chaves estrangeiras com integridade referencial `ON DELETE CASCADE`;
+   - Restrições de unicidade (`UNIQUE KEY`) para impedir duplicidade de listas por usuário (`uq_usuario_assistido`, `uq_usuario_ira_ver`, `uq_usuario_favorito`);
+   - Compatibilidade estrita tanto com bancos de desenvolvimento local quanto com o MariaDB gerenciado em nuvem da disciplina (`IAC_2026_02_felipe_shida`).
+
+2. **Dados Iniciais de Teste (Seed / DML):**
+   - **Usuários com os 3 Papéis do Negócio (RBAC):**
+     | Usuário | E-mail | Senha Padrão | Papel (Role) | Descrição |
+     | :--- | :--- | :---: | :---: | :--- |
+     | **Admin AniTrack** | `admin@anitrack.com` | `Senha123!` | `admin` | Acesso total, moderação e curadoria |
+     | **Crítico Renan** | `critico@anitrack.com` | `Senha123!` | `critico` | Permissão de edição e resenhas |
+     | **Otaku João** | `otaku@anitrack.com` | `Senha123!` | `usuario` | Usuário comum com listas pessoais |
+   - **Catálogo de Animes (Recurso Principal):** 6 obras consagradas pré-cadastradas com pôsteres, sinopses e metadados (*Sousou no Frieren*, *Solo Leveling*, *Attack on Titan*, *Demon Slayer*, *Jujutsu Kaisen*, *Spy x Family*);
+   - **Listas Populadas:** Registros de animes assistidos (com progresso e notas), animes na fila de espera (watchlist) e animes favoritados com fixação no topo do perfil (`fixado = TRUE`);
+   - **Comentários Comunitários:** Resenhas e comentários por anime prontos para demonstração.
+
+### ⚡ Como Executar a Migração e o Seed
+
+#### Opção A: Pelo Container Docker (Mais Fácil)
+Se os containers já estiverem em execução:
+```bash
+docker compose exec catalog npm run db:seed
+```
+
+#### Opção B: Via Script Node.js Local
+No diretório `backend/`:
+```bash
+cd backend
+npm install
+npm run db:seed
+```
+*O script conecta automaticamente no MariaDB configurado no `.env`, aplica todas as migrações e sementes de dados, e exibe o resumo completo no terminal.*
+
+#### Opção C: Via Cliente MySQL / MariaDB (CLI ou Ferramenta Gráfica)
+```bash
+mysql -h 35.226.64.52 -P 3306 -u IAC_2026_02_felipe_shida -p IAC_2026_02_felipe_shida < db/001_dominio.sql
+```
+*Ou abra o [`db/001_dominio.sql`](./db/001_dominio.sql) no DBeaver, phpMyAdmin ou console do Portainer e execute a query.*
 
 ---
 
