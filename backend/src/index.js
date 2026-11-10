@@ -9,9 +9,6 @@ import { fileURLToPath } from 'url';
 import { initDatabase, pool } from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import animeRoutes from './routes/animeRoutes.js';
-import movieRoutes from './routes/movieRoutes.js';
-import favoriteRoutes from './routes/favoriteRoutes.js';
-import commentRoutes from './routes/commentRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 import stripeRoutes from './routes/stripeRoutes.js';
@@ -113,18 +110,14 @@ app.get('/api/health', async (req, res) => {
       status: logServiceStatus,
       details: logServiceDetails
     },
-    anilist_configured: anilistKeyConfigured,
-    tmdb_configured: anilistKeyConfigured
+    anilist_configured: anilistKeyConfigured
   });
 });
 
 // Rotas da API
 app.use('/api/auth', authRoutes);
 app.use('/api/animes', animeRoutes);
-app.use('/api/movies', animeRoutes); // Compatibilidade retroativa
-app.use('/api/movies/:tmdb_movie_id/comments', commentRoutes);
 app.delete('/api/comments/:id', authenticate, deleteComment);
-app.use('/api/favorites', favoriteRoutes);
 app.use('/api/logs', auditRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/stripe', stripeRoutes);

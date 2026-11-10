@@ -10,7 +10,7 @@ const LOG_SERVICE_URL = (process.env.LOG_SERVICE_URL || 'http://log-service:5000
  * 
  * @param {Object} params
  * @param {number|string} params.usuario_id - ID do usuário ou 'anonimo'
- * @param {string} params.acao - Nome da ação (ex: 'login', 'favoritar_filme', 'comentar', 'apagar_comentario_moderacao', 'permissao_negada')
+ * @param {string} params.acao - Nome da ação (ex: 'login', 'anime_favoritado', 'comentar', 'apagar_comentario_moderacao', 'permissao_negada')
  * @param {string} [params.ip] - IP de origem
  * @param {Object} [params.detalhes] - Informações contextuais adicionais
  */

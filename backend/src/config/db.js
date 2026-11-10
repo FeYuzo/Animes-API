@@ -8,7 +8,7 @@ const dbConfig = {
   port: parseInt(process.env.DB_PORT || '3306', 10),
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'catalogo_filmes',
+  database: process.env.DB_NAME || 'anitrack_db',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -110,41 +110,35 @@ export async function initDatabase(retries = 5, delayMs = 3000) {
         console.warn('[Catalog-DB] Aviso ao checar coluna fixado em animes_favoritos:', err.message);
       }
 
-      // 4. Tabela de Comentários (Compatível com animes e legado)
+      // 4. Tabela de Animes (Recurso Principal do Domínio)
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS animes (
+          id INT PRIMARY KEY,
+          titulo VARCHAR(255) NOT NULL,
+          titulo_romaji VARCHAR(255) DEFAULT NULL,
+          sinopse TEXT DEFAULT NULL,
+          poster_url VARCHAR(500) DEFAULT NULL,
+          banner_url VARCHAR(500) DEFAULT NULL,
+          episodios INT DEFAULT 12,
+          status VARCHAR(50) DEFAULT 'RELEASING',
+          formato VARCHAR(50) DEFAULT 'TV',
+          temporada VARCHAR(20) DEFAULT 'FALL',
+          ano INT DEFAULT 2026,
+          generos VARCHAR(255) DEFAULT 'Ação, Fantasia',
+          score INT DEFAULT 85,
+          criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+
+      // 5. Tabela de Comentários
       await connection.query(`
         CREATE TABLE IF NOT EXISTS comentarios (
           id INT AUTO_INCREMENT PRIMARY KEY,
           usuario_id INT NOT NULL,
-          anime_id INT DEFAULT NULL,
-          tmdb_movie_id INT DEFAULT NULL,
+          anime_id INT NOT NULL,
           texto TEXT NOT NULL,
           criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-      `);
-
-      // Verifica se a coluna anime_id existe na tabela comentarios (caso tenha sido criada anteriormente)
-      try {
-        const [comCols] = await connection.query(`SHOW COLUMNS FROM comentarios LIKE 'anime_id'`);
-        if (comCols.length === 0) {
-          await connection.query(`ALTER TABLE comentarios ADD COLUMN anime_id INT DEFAULT NULL AFTER usuario_id`);
-          await connection.query(`UPDATE comentarios SET anime_id = tmdb_movie_id WHERE anime_id IS NULL AND tmdb_movie_id IS NOT NULL`);
-        }
-      } catch (err) {
-        console.warn('[Catalog-DB] Aviso ao checar coluna anime_id em comentarios:', err.message);
-      }
-
-      // Tabela de Favoritos legada (para compatibilidade retroativa)
-      await connection.query(`
-        CREATE TABLE IF NOT EXISTS favoritos (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          usuario_id INT NOT NULL,
-          tmdb_movie_id INT NOT NULL,
-          titulo VARCHAR(255) NOT NULL,
-          poster_path VARCHAR(255),
-          criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-          UNIQUE KEY uq_usuario_filme (usuario_id, tmdb_movie_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
 

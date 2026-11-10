@@ -24,9 +24,9 @@ export async function register(req, res) {
 
     const emailNorm = email.trim().toLowerCase();
 
-    // Valida papel (role) - aceita 'usuario' ou 'admin', padroniza para 'usuario'
-    const allowedRoles = ['usuario', 'admin'];
-    const userRole = role && allowedRoles.includes(role.toLowerCase()) ? role.toLowerCase() : 'usuario';
+    // Valida papel (role) do domínio AniTrack - aceita 'otaku', 'critico', 'admin' ou 'usuario'
+    const allowedRoles = ['otaku', 'critico', 'admin', 'usuario'];
+    const userRole = role && allowedRoles.includes(role.toLowerCase()) ? role.toLowerCase() : 'otaku';
 
     // Verifica se o e-mail já existe
     const [existing] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [emailNorm]);

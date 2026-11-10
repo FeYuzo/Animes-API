@@ -3,8 +3,6 @@ import { minioClient, BUCKET_NAME, getPhotoPublicUrl } from '../config/minio.js'
 import { validateImageMagicBytes } from '../utils/fileValidation.js';
 import { logAuditEvent } from '../services/auditService.js';
 
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
-
 async function checkUserIsPremium(userId) {
   if (!userId) return false;
   try {
@@ -21,7 +19,7 @@ function getClientIp(req) {
 }
 
 /**
- * Consulta perfil de um usuário (com dados cadastrais, bio, foto e lista de filmes favoritados)
+ * Consulta perfil de um usuário (com dados cadastrais, bio, foto e lista de animes favoritados)
  * Rota: GET /api/profile/me ou GET /api/profile/:id
  */
 export async function getProfile(req, res) {
@@ -75,22 +73,13 @@ export async function getProfile(req, res) {
       );
       favoritesRows = favs;
     } catch (_) {
-      // Fallback para tabela legada se necessário
-      const [favs] = await pool.query(
-        `SELECT f.id, f.usuario_id, f.tmdb_movie_id as anime_id, f.titulo, f.poster_path as poster_url, 0 as fixado, f.criado_em,
-                (SELECT COUNT(*) FROM comentarios c WHERE c.tmdb_movie_id = f.tmdb_movie_id) as comments_count
-         FROM favoritos f
-         WHERE f.usuario_id = ?
-         ORDER BY f.criado_em DESC`,
-        [targetUserId]
-      );
-      favoritesRows = favs;
+      favoritesRows = [];
     }
 
     const formattedFavorites = favoritesRows.map((fav) => ({
       ...fav,
       fixado: Boolean(fav.fixado),
-      poster_url: fav.poster_url || fav.poster_path || null
+      poster_url: fav.poster_url || null
     }));
 
     // 3. Contagem de animes assistidos, fila de espera e tempo assistido

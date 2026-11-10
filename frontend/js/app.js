@@ -226,6 +226,11 @@ async function refreshUserData() {
     if (navCountFavorites) navCountFavorites.textContent = favoritesState.length;
 
     updateCapacityBadge();
+
+    const btnOpenCreateAnime = document.getElementById('btn-open-create-anime-modal');
+    if (btnOpenCreateAnime) {
+      btnOpenCreateAnime.classList.toggle('hidden', !currentUser);
+    }
   } catch (err) {
     console.warn('[AniTrack] Falha ao sincronizar dados do usuário:', err.message);
   }
@@ -840,6 +845,16 @@ function updateModalActionButtons(anime) {
     btnActionPin?.classList.toggle('btn-primary', isPinned);
     btnActionPin?.classList.toggle('btn-outline', !isPinned);
   }
+
+  const btnEditAnime = document.getElementById('btn-action-edit-anime');
+  const btnDeleteAnime = document.getElementById('btn-action-delete-anime');
+  const canManage = currentUser && (currentUser.role === 'admin' || currentUser.role === 'critico');
+  if (btnEditAnime) {
+    btnEditAnime.classList.toggle('hidden', !canManage);
+  }
+  if (btnDeleteAnime) {
+    btnDeleteAnime.classList.toggle('hidden', currentUser?.role !== 'admin');
+  }
 }
 
 function closeAnimeDetailModal() {
@@ -1073,6 +1088,11 @@ async function openProfileModal() {
       api.setUser(currentUser);
       updateNavPremiumUI(currentUser);
       updateCapacityBadge();
+
+    const btnOpenCreateAnime = document.getElementById('btn-open-create-anime-modal');
+    if (btnOpenCreateAnime) {
+      btnOpenCreateAnime.classList.toggle('hidden', !currentUser);
+    }
     }
 
     // 1. Atualização do Banner do Perfil
@@ -1518,7 +1538,7 @@ btnProfileSubscribe?.addEventListener('click', () => {
 });
 
 // Fechamento no backdrop
-[animeModal, watchedModal, profileModal].forEach((modal) => {
+[animeModal, watchedModal, profileModal, document.getElementById('anime-crud-modal')].forEach((modal) => {
   modal?.addEventListener('click', (e) => {
     if (e.target === modal) modal.classList.add('hidden');
   });
@@ -1529,6 +1549,159 @@ document.addEventListener('keydown', (e) => {
     closeAnimeDetailModal();
     closeWatchedModal();
     closeProfileModal();
+    closeAnimeCrudModal();
+  }
+});
+
+// ============================================================================
+// CRUD DE ANIMES (RECURSO PRINCIPAL DO NEGÓCIO)
+// ============================================================================
+const animeCrudModal = document.getElementById('anime-crud-modal');
+const btnOpenCreateAnimeModal = document.getElementById('btn-open-create-anime-modal');
+const btnCloseAnimeCrudModal = document.getElementById('btn-close-anime-crud-modal');
+const formAnimeCrud = document.getElementById('form-anime-crud');
+const animeCrudModalTitle = document.getElementById('anime-crud-modal-title');
+const inputAnimeCrudId = document.getElementById('input-anime-crud-id');
+const inputAnimeCrudTitle = document.getElementById('input-anime-crud-title');
+const inputAnimeCrudRomaji = document.getElementById('input-anime-crud-romaji');
+const inputAnimeCrudSynopsis = document.getElementById('input-anime-crud-synopsis');
+const inputAnimeCrudEpisodes = document.getElementById('input-anime-crud-episodes');
+const inputAnimeCrudScore = document.getElementById('input-anime-crud-score');
+const inputAnimeCrudStatus = document.getElementById('input-anime-crud-status');
+const inputAnimeCrudFormat = document.getElementById('input-anime-crud-format');
+const inputAnimeCrudGenres = document.getElementById('input-anime-crud-genres');
+const inputAnimeCrudPoster = document.getElementById('input-anime-crud-poster');
+const inputAnimeCrudCoverFile = document.getElementById('input-anime-crud-cover-file');
+const btnDeleteAnimeCrud = document.getElementById('btn-delete-anime-crud');
+const btnActionEditAnime = document.getElementById('btn-action-edit-anime');
+const btnActionDeleteAnime = document.getElementById('btn-action-delete-anime');
+
+function openCreateAnimeModal() {
+  if (!animeCrudModal) return;
+  animeCrudModalTitle.textContent = 'Cadastrar Novo Anime no Catálogo';
+  inputAnimeCrudId.value = '';
+  inputAnimeCrudTitle.value = '';
+  inputAnimeCrudRomaji.value = '';
+  inputAnimeCrudSynopsis.value = '';
+  inputAnimeCrudEpisodes.value = '12';
+  inputAnimeCrudScore.value = '80';
+  inputAnimeCrudStatus.value = 'RELEASING';
+  inputAnimeCrudFormat.value = 'TV';
+  inputAnimeCrudGenres.value = 'Ação, Fantasia';
+  inputAnimeCrudPoster.value = '';
+  if (inputAnimeCrudCoverFile) inputAnimeCrudCoverFile.value = '';
+  btnDeleteAnimeCrud?.classList.add('hidden');
+  animeCrudModal.classList.remove('hidden');
+}
+
+function openEditAnimeModal(anime) {
+  if (!animeCrudModal) return;
+  animeCrudModalTitle.textContent = 'Editar Anime no Catálogo';
+  inputAnimeCrudId.value = anime.id || anime.anime_id;
+  inputAnimeCrudTitle.value = anime.titulo || anime.title?.english || anime.title?.romaji || '';
+  inputAnimeCrudRomaji.value = anime.titulo_romaji || anime.title?.romaji || '';
+  inputAnimeCrudSynopsis.value = anime.sinopse || anime.description || '';
+  inputAnimeCrudEpisodes.value = anime.total_episodios || anime.episodes || 12;
+  inputAnimeCrudScore.value = anime.score_medio || anime.averageScore || 80;
+  inputAnimeCrudStatus.value = anime.status || 'RELEASING';
+  inputAnimeCrudFormat.value = anime.formato || anime.format || 'TV';
+  inputAnimeCrudGenres.value = Array.isArray(anime.generos) ? anime.generos.join(', ') : (Array.isArray(anime.genres) ? anime.genres.join(', ') : (anime.generos || 'Ação, Fantasia'));
+  inputAnimeCrudPoster.value = anime.poster_url || anime.coverImage?.large || '';
+  if (inputAnimeCrudCoverFile) inputAnimeCrudCoverFile.value = '';
+
+  const isAdmin = currentUser?.role === 'admin';
+  btnDeleteAnimeCrud?.classList.toggle('hidden', !isAdmin);
+  animeCrudModal.classList.remove('hidden');
+}
+
+function closeAnimeCrudModal() {
+  animeCrudModal?.classList.add('hidden');
+}
+
+btnOpenCreateAnimeModal?.addEventListener('click', openCreateAnimeModal);
+btnCloseAnimeCrudModal?.addEventListener('click', closeAnimeCrudModal);
+
+btnActionEditAnime?.addEventListener('click', () => {
+  if (activeAnimeForModal) {
+    closeAnimeDetailModal();
+    openEditAnimeModal(activeAnimeForModal);
+  }
+});
+
+btnActionDeleteAnime?.addEventListener('click', async () => {
+  if (!activeAnimeForModal) return;
+  const animeId = activeAnimeForModal.id || activeAnimeForModal.anime_id;
+  if (!confirm(`Deseja realmente remover o anime "${activeAnimeForModal.titulo || activeAnimeForModal.title?.romaji}" do catálogo?`)) return;
+  try {
+    await api.deleteAnime(animeId);
+    showToast('Anime removido do catálogo com sucesso!', 'success');
+    closeAnimeDetailModal();
+    loadCatalog();
+  } catch (err) {
+    showToast(err.message || 'Erro ao remover anime.', 'error');
+  }
+});
+
+btnDeleteAnimeCrud?.addEventListener('click', async () => {
+  const animeId = inputAnimeCrudId.value;
+  if (!animeId) return;
+  if (!confirm('Deseja realmente excluir este anime do catálogo?')) return;
+  try {
+    await api.deleteAnime(animeId);
+    showToast('Anime excluído com sucesso!', 'success');
+    closeAnimeCrudModal();
+    loadCatalog();
+  } catch (err) {
+    showToast(err.message || 'Erro ao excluir anime.', 'error');
+  }
+});
+
+formAnimeCrud?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const animeId = inputAnimeCrudId.value;
+  const isEditing = Boolean(animeId);
+
+  const payload = {
+    titulo: inputAnimeCrudTitle.value.trim(),
+    titulo_romaji: inputAnimeCrudRomaji.value.trim(),
+    sinopse: inputAnimeCrudSynopsis.value.trim(),
+    episodios: parseInt(inputAnimeCrudEpisodes.value, 10) || 12,
+    score: parseInt(inputAnimeCrudScore.value, 10) || 80,
+    status: inputAnimeCrudStatus.value,
+    formato: inputAnimeCrudFormat.value,
+    generos: inputAnimeCrudGenres.value.trim(),
+    poster_url: inputAnimeCrudPoster.value.trim() || null
+  };
+
+  try {
+    let savedAnime = null;
+    if (isEditing) {
+      const res = await api.updateAnime(animeId, payload);
+      savedAnime = res.anime;
+      showToast('Anime atualizado com sucesso!', 'success');
+    } else {
+      const res = await api.createAnime(payload);
+      savedAnime = res.anime;
+      showToast('Anime cadastrado com sucesso!', 'success');
+    }
+
+    // Upload de capa para o MinIO se fornecida
+    if (inputAnimeCrudCoverFile && inputAnimeCrudCoverFile.files.length > 0 && savedAnime) {
+      const targetId = savedAnime.id || animeId;
+      const formData = new FormData();
+      formData.append('cover', inputAnimeCrudCoverFile.files[0]);
+      try {
+        await api.uploadAnimeCover(targetId, formData);
+        showToast('Capa do anime salva no MinIO com sucesso!', 'success');
+      } catch (uploadErr) {
+        showToast(`Anime salvo, mas aviso no upload MinIO: ${uploadErr.message}`, 'warning');
+      }
+    }
+
+    closeAnimeCrudModal();
+    loadCatalog();
+  } catch (err) {
+    showToast(err.message || 'Erro ao salvar anime.', 'error');
   }
 });
 

@@ -10,12 +10,12 @@ function getClientIp(req) {
  * Lista os comentários de um anime específico.
  * Todos os usuários autenticados (comuns e administradores) podem visualizar
  * os comentários da comunidade com o nome do autor e selo VIP Pro.
- * Rota: GET /api/animes/:anime_id/comments ou GET /api/movies/:tmdb_movie_id/comments
+ * Rota: GET /api/animes/:anime_id/comments
  */
-export async function listMovieComments(req, res) {
+export async function listAnimeComments(req, res) {
   try {
-    const userRole = req.user?.role || 'usuario';
-    const rawId = req.params.anime_id || req.params.tmdb_movie_id || req.params.id;
+    const userRole = req.user?.role || 'otaku';
+    const rawId = req.params.anime_id || req.params.id;
     const animeId = parseInt(rawId, 10);
 
     if (isNaN(animeId)) {
@@ -23,17 +23,17 @@ export async function listMovieComments(req, res) {
     }
 
     const query = `
-      SELECT c.id, c.usuario_id, COALESCE(c.anime_id, c.tmdb_movie_id) AS anime_id, c.texto, c.criado_em,
+      SELECT c.id, c.usuario_id, c.anime_id, c.texto, c.criado_em,
              u.nome AS autor_nome,
              u.is_premium AS autor_is_premium,
              u.foto_perfil AS autor_foto,
              IF(? = 'admin', u.email, NULL) AS autor_email
       FROM comentarios c
       LEFT JOIN usuarios u ON c.usuario_id = u.id
-      WHERE c.anime_id = ? OR c.tmdb_movie_id = ?
+      WHERE c.anime_id = ?
       ORDER BY c.criado_em DESC
     `;
-    const params = [userRole, animeId, animeId];
+    const params = [userRole, animeId];
 
     const [rows] = await pool.query(query, params);
 
@@ -50,13 +50,13 @@ export async function listMovieComments(req, res) {
 
 /**
  * Adiciona um comentário para um anime específico vinculado ao usuário logado.
- * Rota: POST /api/animes/:anime_id/comments ou POST /api/movies/:tmdb_movie_id/comments
+ * Rota: POST /api/animes/:anime_id/comments
  */
 export async function addComment(req, res) {
   try {
     const userId = req.user.id;
     const clientIp = getClientIp(req);
-    const rawId = req.params.anime_id || req.params.tmdb_movie_id || req.body.anime_id || req.body.tmdb_movie_id;
+    const rawId = req.params.anime_id || req.body.anime_id;
     const animeId = parseInt(rawId, 10);
     const { texto } = req.body;
 
@@ -69,9 +69,9 @@ export async function addComment(req, res) {
     }
 
     const [result] = await pool.query(
-      `INSERT INTO comentarios (usuario_id, anime_id, tmdb_movie_id, texto)
-       VALUES (?, ?, ?, ?)`,
-      [userId, animeId, animeId, texto.trim()]
+      `INSERT INTO comentarios (usuario_id, anime_id, texto)
+       VALUES (?, ?, ?)`,
+      [userId, animeId, texto.trim()]
     );
 
     const [newCommentRows] = await pool.query(
@@ -119,7 +119,7 @@ export async function deleteComment(req, res) {
 
     // 1. Busca o comentário no banco de dados
     const [rows] = await pool.query(
-      'SELECT id, usuario_id, anime_id, tmdb_movie_id, texto FROM comentarios WHERE id = ?',
+      'SELECT id, usuario_id, anime_id, texto FROM comentarios WHERE id = ?',
       [commentId]
     );
 
@@ -128,7 +128,7 @@ export async function deleteComment(req, res) {
     }
 
     const comment = rows[0];
-    const targetAnimeId = comment.anime_id || comment.tmdb_movie_id;
+    const targetAnimeId = comment.anime_id;
 
     // 2. Se o usuário autenticado for o autor do comentário:
     // Permissão 'comentarios:excluir_proprio' (permitido para usuario e admin)

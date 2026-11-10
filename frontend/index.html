@@ -476,6 +476,11 @@
           </div>
           <h2 id="catalog-heading" class="catalog-heading">Explorar Animes</h2>
           <p id="catalog-subheading" class="catalog-subheading">Descubra novos títulos, clássicos e lançamentos da temporada</p>
+          <div class="mt-2">
+            <button id="btn-open-create-anime-modal" class="btn btn-primary btn-sm hidden" type="button">
+              <span>+ Cadastrar Anime</span>
+            </button>
+          </div>
         </div>
 
         <!-- Controls Bar: Search, Filters & Sorters -->
@@ -627,6 +632,14 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
             <span>Trailer</span>
           </a>
+
+          <button id="btn-action-edit-anime" class="btn btn-sm btn-outline hidden" type="button" title="Editar dados desta obra">
+            <span>✏️ Editar</span>
+          </button>
+
+          <button id="btn-action-delete-anime" class="btn btn-sm btn-ghost-danger hidden" type="button" title="Excluir obra do catálogo">
+            <span>🗑️ Excluir</span>
+          </button>
         </div>
 
         <div class="modal-body">
@@ -1044,6 +1057,89 @@
 
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: CADASTRAR / EDITAR ANIME ================= -->
+  <div id="anime-crud-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="anime-crud-modal-title" class="modal-title">Cadastrar Novo Anime</h3>
+          <button id="btn-close-anime-crud-modal" class="modal-close-btn" type="button" title="Fechar">&times;</button>
+        </div>
+
+        <form id="form-anime-crud" class="modal-body">
+          <input type="hidden" id="input-anime-crud-id">
+          
+          <div class="form-group">
+            <label for="input-anime-crud-title">Título do Anime *</label>
+            <input type="text" id="input-anime-crud-title" class="form-control" required placeholder="Ex: Solo Leveling">
+          </div>
+
+          <div class="form-group">
+            <label for="input-anime-crud-romaji">Título em Romaji</label>
+            <input type="text" id="input-anime-crud-romaji" class="form-control" placeholder="Ex: Ore dake Level Up na Ken">
+          </div>
+
+          <div class="form-group">
+            <label for="input-anime-crud-synopsis">Sinopse</label>
+            <textarea id="input-anime-crud-synopsis" class="form-control" rows="3" placeholder="Descrição do anime..."></textarea>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="input-anime-crud-episodes">Total de Episódios</label>
+              <input type="number" id="input-anime-crud-episodes" class="form-control" min="1" max="2000" value="12">
+            </div>
+            <div class="form-group">
+              <label for="input-anime-crud-score">Nota Média (0 a 100)</label>
+              <input type="number" id="input-anime-crud-score" class="form-control" min="0" max="100" value="80">
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="input-anime-crud-status">Status</label>
+              <select id="input-anime-crud-status" class="form-control">
+                <option value="RELEASING">Em Lançamento (RELEASING)</option>
+                <option value="FINISHED">Finalizado (FINISHED)</option>
+                <option value="NOT_YET_RELEASED">Em Breve (NOT_YET_RELEASED)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="input-anime-crud-format">Formato</label>
+              <select id="input-anime-crud-format" class="form-control">
+                <option value="TV">Série de TV</option>
+                <option value="MOVIE">Filme</option>
+                <option value="OVA">OVA / Especial</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="input-anime-crud-genres">Gêneros (separados por vírgula)</label>
+            <input type="text" id="input-anime-crud-genres" class="form-control" value="Ação, Fantasia, Aventura">
+          </div>
+
+          <!-- Upload de Capa via MinIO ou URL -->
+          <div class="form-group">
+            <label for="input-anime-crud-cover-file">Upload de Capa (MinIO S3)</label>
+            <input type="file" id="input-anime-crud-cover-file" accept="image/jpeg,image/png,image/webp" class="form-control">
+            <small class="text-muted text-xs">A imagem será salva no Object Storage MinIO vinculado a este anime.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="input-anime-crud-poster">Ou URL Externa do Poster</label>
+            <input type="url" id="input-anime-crud-poster" class="form-control" placeholder="https://...">
+          </div>
+
+          <div class="modal-footer-actions mt-3">
+            <button type="submit" id="btn-save-anime-crud" class="btn btn-primary btn-sm">Salvar Anime</button>
+            <button type="button" id="btn-delete-anime-crud" class="btn btn-ghost-danger btn-sm hidden">Excluir Anime</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

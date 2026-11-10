@@ -165,12 +165,35 @@ export const api = {
     return this.request(`/animes/${id}`);
   },
 
-  // Retrocompatibilidade para chamadas antigas
-  async getMovies(forceRefresh = false) {
-    return this.getAnimes();
+  async createAnime(data) {
+    return this.request('/animes', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
   },
-  async getMovie(id) {
-    return this.getAnime(id);
+
+  async updateAnime(id, data) {
+    return this.request(`/animes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteAnime(id) {
+    return this.request(`/animes/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async uploadAnimeCover(id, formData) {
+    return this.request(`/animes/${id}/cover`, {
+      method: 'POST',
+      body: formData
+    });
+  },
+
+  async getWatchedDetails(id) {
+    return this.request(`/animes/assistidos/${id}`);
   },
 
   // ===== R4: SIMULCAST =====

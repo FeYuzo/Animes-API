@@ -5,7 +5,7 @@ import { logAuditEvent } from '../services/auditService.js';
 
 dotenv.config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'chave_secreta_padrao_catalogo_filmes_2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'chave_secreta_padrao_anitrack_2026';
 
 /**
  * Middleware para validar o token JWT emitido pelo Auth-Service

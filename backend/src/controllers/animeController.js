@@ -1,4 +1,6 @@
 import { pool } from '../config/db.js';
+import { minioClient, BUCKET_NAME, getPhotoPublicUrl } from '../config/minio.js';
+import { validateImageMagicBytes } from '../utils/fileValidation.js';
 import {
   getAnimeCatalog,
   getAnimeById,
@@ -47,22 +49,62 @@ export async function listAnimes(req, res) {
 
     const sortList = typeof sort === 'string' ? sort.split(',') : ['POPULARITY_DESC'];
 
-    const catalog = await getAnimeCatalog({
-      page: parseInt(page, 10) || 1,
-      perPage: parseInt(perPage, 10) || 30,
-      search: search || null,
-      sort: sortList,
-      season: season || null,
-      seasonYear: seasonYear ? parseInt(seasonYear, 10) : null,
-      genre: genre || null
-    });
+    // 1. Busca animes locais cadastrados no MariaDB
+    let localAnimes = [];
+    try {
+      let localSql = 'SELECT * FROM animes';
+      let localParams = [];
+      if (search && search.trim().length > 0) {
+        localSql += ' WHERE titulo LIKE ? OR titulo_romaji LIKE ?';
+        localParams.push(`%${search.trim()}%`, `%${search.trim()}%`);
+      }
+      localSql += ' ORDER BY id DESC LIMIT 50';
+      const [lRows] = await pool.query(localSql, localParams);
+      localAnimes = lRows.map((r) => ({
+        id: r.id,
+        title: { romaji: r.titulo_romaji || r.titulo, english: r.titulo, native: r.titulo },
+        description: r.sinopse,
+        coverImage: { large: r.poster_url, extraLarge: r.poster_url, medium: r.poster_url },
+        bannerImage: r.banner_url || r.poster_url,
+        episodes: r.episodios,
+        status: r.status,
+        format: r.formato,
+        season: r.temporada,
+        seasonYear: r.ano,
+        genres: r.generos ? r.generos.split(',').map((g) => g.trim()) : [],
+        averageScore: r.score,
+        is_local: true
+      }));
+    } catch (lErr) {
+      console.warn('[Catalog-DB] Aviso ao buscar animes locais:', lErr.message);
+    }
+
+    // 2. Busca catálogo geral na AniList
+    let catalog = { pageInfo: { total: 0, currentPage: 1, lastPage: 1, hasNextPage: false }, animes: [] };
+    try {
+      catalog = await getAnimeCatalog({
+        page: parseInt(page, 10) || 1,
+        perPage: parseInt(perPage, 10) || 30,
+        search: search || null,
+        sort: sortList,
+        season: season || null,
+        seasonYear: seasonYear ? parseInt(seasonYear, 10) : null,
+        genre: genre || null
+      });
+    } catch (apiErr) {
+      console.warn('[AniList] Falha ao consultar catálogo externo, exibindo animes locais:', apiErr.message);
+    }
+
+    // Combina locais e externos evitando duplicidade de ID
+    const localIds = new Set(localAnimes.map((a) => a.id));
+    const combinedAnimes = [...localAnimes, ...catalog.animes.filter((a) => !localIds.has(a.id))];
 
     const userId = req.user?.id;
-    let enrichedAnimes = catalog.animes;
+    let enrichedAnimes = combinedAnimes;
 
     // Se o usuário estiver autenticado, enriquece a lista com dados relacionais do MariaDB
-    if (userId && catalog.animes.length > 0) {
-      const animeIds = catalog.animes.map((a) => a.id);
+    if (userId && combinedAnimes.length > 0) {
+      const animeIds = combinedAnimes.map((a) => a.id);
 
       // 1. Animes assistidos
       const [watchedRows] = await pool.query(
@@ -95,7 +137,7 @@ export async function listAnimes(req, res) {
       const commMap = new Map();
       commRows.forEach((r) => commMap.set(r.anime_id, r.total));
 
-      enrichedAnimes = catalog.animes.map((anime) => ({
+      enrichedAnimes = combinedAnimes.map((anime) => ({
         ...anime,
         is_assistido: watchedMap.has(anime.id),
         dados_assistido: watchedMap.get(anime.id) || null,
@@ -111,13 +153,12 @@ export async function listAnimes(req, res) {
       success: true,
       pageInfo: catalog.pageInfo,
       total: catalog.pageInfo?.total || enrichedAnimes.length,
-      animes: enrichedAnimes,
-      movies: enrichedAnimes // retrocompatibilidade com clientes legados
+      animes: enrichedAnimes
     });
   } catch (err) {
     console.error('[AnimeController] Erro ao listar animes:', err);
     return res.status(500).json({
-      error: 'Erro ao buscar catálogo de animes na AniList.',
+      error: 'Erro ao buscar catálogo de animes.',
       details: err.message
     });
   }
@@ -134,9 +175,35 @@ export async function getAnimeDetails(req, res) {
       return res.status(400).json({ error: 'ID de anime inválido.' });
     }
 
-    const anime = await getAnimeById(animeId);
+    let anime = null;
+    try {
+      const [localRows] = await pool.query('SELECT * FROM animes WHERE id = ?', [animeId]);
+      if (localRows.length > 0) {
+        const r = localRows[0];
+        anime = {
+          id: r.id,
+          title: { romaji: r.titulo_romaji || r.titulo, english: r.titulo, native: r.titulo },
+          description: r.sinopse,
+          coverImage: { large: r.poster_url, extraLarge: r.poster_url, medium: r.poster_url },
+          bannerImage: r.banner_url || r.poster_url,
+          episodes: r.episodios,
+          status: r.status,
+          format: r.formato,
+          season: r.temporada,
+          seasonYear: r.ano,
+          genres: r.generos ? r.generos.split(',').map((g) => g.trim()) : [],
+          averageScore: r.score,
+          is_local: true
+        };
+      }
+    } catch (_) {}
+
     if (!anime) {
-      return res.status(404).json({ error: 'Anime não encontrado na AniList.' });
+      anime = await getAnimeById(animeId);
+    }
+
+    if (!anime) {
+      return res.status(404).json({ error: 'Anime não encontrado no catálogo.' });
     }
 
     const userId = req.user?.id;
@@ -180,9 +247,9 @@ export async function getAnimeDetails(req, res) {
               IF(? = 'admin', u.email, NULL) AS autor_email
        FROM comentarios c
        LEFT JOIN usuarios u ON c.usuario_id = u.id
-       WHERE c.anime_id = ? OR c.tmdb_movie_id = ?
+       WHERE c.anime_id = ?
        ORDER BY c.criado_em DESC`,
-      [req.user?.role || 'usuario', animeId, animeId]
+      [req.user?.role || 'otaku', animeId]
     );
 
     return res.json({
@@ -574,19 +641,18 @@ export async function addFavorite(req, res) {
   try {
     const userId = req.user.id;
     const clientIp = getClientIp(req);
-    const { anime_id, tmdb_movie_id, titulo, poster_url, poster_path } = req.body;
+    const { anime_id, titulo, poster_url } = req.body;
 
-    const rawId = anime_id || tmdb_movie_id;
-    if (!rawId || !titulo) {
+    if (!anime_id || !titulo) {
       return res.status(400).json({ error: 'anime_id e titulo são obrigatórios.' });
     }
 
-    const parsedId = parseInt(rawId, 10);
+    const parsedId = parseInt(anime_id, 10);
     if (isNaN(parsedId)) {
       return res.status(400).json({ error: 'anime_id deve ser um número inteiro.' });
     }
 
-    const resolvedPoster = poster_url || poster_path || null;
+    const resolvedPoster = poster_url || null;
 
     await pool.query(
       `INSERT INTO animes_favoritos (usuario_id, anime_id, titulo, poster_url)
@@ -596,20 +662,6 @@ export async function addFavorite(req, res) {
          poster_url = VALUES(poster_url)`,
       [userId, parsedId, String(titulo).trim(), resolvedPoster]
     );
-
-    // Também sincroniza com a tabela 'favoritos' legada para compatibilidade retroativa
-    try {
-      await pool.query(
-        `INSERT INTO favoritos (usuario_id, tmdb_movie_id, titulo, poster_path)
-         VALUES (?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE
-           titulo = VALUES(titulo),
-           poster_path = VALUES(poster_path)`,
-        [userId, parsedId, String(titulo).trim(), resolvedPoster]
-      );
-    } catch (_) {
-      // Ignora falhas na tabela legada
-    }
 
     logAuditEvent({
       usuario_id: userId,
@@ -655,14 +707,6 @@ export async function removeFavorite(req, res) {
       'DELETE FROM animes_favoritos WHERE usuario_id = ? AND (id = ? OR anime_id = ?)',
       [userId, targetId, targetId]
     );
-
-    // Também remove da tabela de favoritos legada
-    try {
-      await pool.query(
-        'DELETE FROM favoritos WHERE usuario_id = ? AND (id = ? OR tmdb_movie_id = ?)',
-        [userId, targetId, targetId]
-      );
-    } catch (_) {}
 
     logAuditEvent({
       usuario_id: userId,
@@ -880,5 +924,343 @@ export async function listSimulcastToday(req, res) {
       error: 'Erro ao obter lançamentos de simulcast de hoje na AniList.',
       details: err.message
     });
+  }
+}
+
+// ============================================================================
+// 6. CRUD COMPLETO DA ENTIDADE PRINCIPAL: ANIMES (/api/animes)
+// ============================================================================
+
+/**
+ * Cadastra um novo anime no catálogo próprio.
+ * Rota: POST /api/animes
+ */
+export async function createAnime(req, res) {
+  try {
+    const userId = req.user.id;
+    const clientIp = getClientIp(req);
+    const {
+      titulo,
+      titulo_romaji,
+      sinopse,
+      poster_url,
+      banner_url,
+      episodios = 12,
+      status = 'RELEASING',
+      formato = 'TV',
+      temporada = 'FALL',
+      ano = 2026,
+      generos = 'Ação, Fantasia',
+      score = 80
+    } = req.body;
+
+    if (!titulo || typeof titulo !== 'string' || titulo.trim().length === 0) {
+      return res.status(400).json({ error: 'O título do anime é obrigatório.' });
+    }
+
+    const newId = Math.floor(Date.now() / 1000) + Math.floor(Math.random() * 1000);
+
+    await pool.query(
+      `INSERT INTO animes (id, titulo, titulo_romaji, sinopse, poster_url, banner_url, episodios, status, formato, temporada, ano, generos, score)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        newId,
+        titulo.trim(),
+        titulo_romaji ? titulo_romaji.trim() : titulo.trim(),
+        sinopse ? sinopse.trim() : '',
+        poster_url || null,
+        banner_url || null,
+        parseInt(episodios, 10) || 12,
+        status || 'RELEASING',
+        formato || 'TV',
+        temporada || 'FALL',
+        parseInt(ano, 10) || 2026,
+        generos || 'Ação, Fantasia',
+        parseInt(score, 10) || 80
+      ]
+    );
+
+    const [rows] = await pool.query('SELECT * FROM animes WHERE id = ?', [newId]);
+
+    logAuditEvent({
+      usuario_id: userId,
+      acao: 'anime_criado',
+      ip: clientIp,
+      detalhes: {
+        anime_id: newId,
+        titulo: titulo.trim()
+      }
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Anime cadastrado com sucesso no catálogo.',
+      anime: rows[0]
+    });
+  } catch (err) {
+    console.error('[AnimeController] Erro ao cadastrar anime:', err);
+    return res.status(500).json({ error: 'Erro ao cadastrar anime.', details: err.message });
+  }
+}
+
+/**
+ * Atualiza os dados de um anime existente no catálogo.
+ * Ação restrita a administradores e críticos: ação proibida responde 403.
+ * Rota: PUT /api/animes/:id ou PATCH /api/animes/:id
+ */
+export async function updateAnime(req, res) {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role || 'otaku';
+    const clientIp = getClientIp(req);
+    const animeId = parseInt(req.params.id, 10);
+
+    if (isNaN(animeId)) {
+      return res.status(400).json({ error: 'ID de anime inválido.' });
+    }
+
+    if (userRole !== 'admin' && userRole !== 'critico') {
+      logAuditEvent({
+        usuario_id: userId,
+        acao: 'permissao_negada',
+        ip: clientIp,
+        detalhes: {
+          motivo: 'tentativa_edicao_anime_sem_permissao',
+          anime_id: animeId,
+          role: userRole
+        }
+      });
+      return res.status(403).json({
+        error: `Acesso proibido. O papel '${userRole}' não possui permissão para editar obras no catálogo.`
+      });
+    }
+
+    const [existing] = await pool.query('SELECT * FROM animes WHERE id = ?', [animeId]);
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Anime não encontrado no catálogo local.' });
+    }
+
+    const {
+      titulo,
+      titulo_romaji,
+      sinopse,
+      poster_url,
+      banner_url,
+      episodios,
+      status,
+      formato,
+      temporada,
+      ano,
+      generos,
+      score
+    } = req.body;
+
+    const updates = [];
+    const params = [];
+
+    if (titulo !== undefined) { updates.push('titulo = ?'); params.push(titulo.trim()); }
+    if (titulo_romaji !== undefined) { updates.push('titulo_romaji = ?'); params.push(titulo_romaji.trim()); }
+    if (sinopse !== undefined) { updates.push('sinopse = ?'); params.push(sinopse.trim()); }
+    if (poster_url !== undefined) { updates.push('poster_url = ?'); params.push(poster_url); }
+    if (banner_url !== undefined) { updates.push('banner_url = ?'); params.push(banner_url); }
+    if (episodios !== undefined) { updates.push('episodios = ?'); params.push(parseInt(episodios, 10) || 12); }
+    if (status !== undefined) { updates.push('status = ?'); params.push(status); }
+    if (formato !== undefined) { updates.push('formato = ?'); params.push(formato); }
+    if (temporada !== undefined) { updates.push('temporada = ?'); params.push(temporada); }
+    if (ano !== undefined) { updates.push('ano = ?'); params.push(parseInt(ano, 10) || 2026); }
+    if (generos !== undefined) { updates.push('generos = ?'); params.push(generos); }
+    if (score !== undefined) { updates.push('score = ?'); params.push(parseInt(score, 10) || 80); }
+
+    if (updates.length > 0) {
+      params.push(animeId);
+      await pool.query(`UPDATE animes SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
+
+    const [updated] = await pool.query('SELECT * FROM animes WHERE id = ?', [animeId]);
+
+    logAuditEvent({
+      usuario_id: userId,
+      acao: 'anime_atualizado',
+      ip: clientIp,
+      detalhes: {
+        anime_id: animeId,
+        campos_alterados: Object.keys(req.body)
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: 'Anime atualizado com sucesso.',
+      anime: updated[0]
+    });
+  } catch (err) {
+    console.error('[AnimeController] Erro ao atualizar anime:', err);
+    return res.status(500).json({ error: 'Erro ao atualizar anime.', details: err.message });
+  }
+}
+
+/**
+ * Remove um anime do catálogo.
+ * Ação restrita a administradores: tentativa não autorizada responde 403.
+ * Rota: DELETE /api/animes/:id
+ */
+export async function deleteAnime(req, res) {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role || 'otaku';
+    const clientIp = getClientIp(req);
+    const animeId = parseInt(req.params.id, 10);
+
+    if (isNaN(animeId)) {
+      return res.status(400).json({ error: 'ID de anime inválido.' });
+    }
+
+    if (userRole !== 'admin') {
+      logAuditEvent({
+        usuario_id: userId,
+        acao: 'permissao_negada',
+        ip: clientIp,
+        detalhes: {
+          motivo: 'tentativa_exclusao_anime_sem_permissao',
+          anime_id: animeId,
+          role: userRole
+        }
+      });
+      return res.status(403).json({
+        error: `Acesso proibido. Somente administradores podem excluir animes do catálogo.`
+      });
+    }
+
+    const [existing] = await pool.query('SELECT id, titulo FROM animes WHERE id = ?', [animeId]);
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Anime não encontrado no catálogo local.' });
+    }
+
+    await pool.query('DELETE FROM animes WHERE id = ?', [animeId]);
+
+    logAuditEvent({
+      usuario_id: userId,
+      acao: 'anime_excluido',
+      ip: clientIp,
+      detalhes: {
+        anime_id: animeId,
+        titulo: existing[0].titulo
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: 'Anime removido do catálogo com sucesso.'
+    });
+  } catch (err) {
+    console.error('[AnimeController] Erro ao excluir anime:', err);
+    return res.status(500).json({ error: 'Erro ao excluir anime.', details: err.message });
+  }
+}
+
+/**
+ * Upload de poster/capa do anime diretamente no MinIO (Object Storage) ligado ao domínio.
+ * Rota: POST /api/animes/:id/cover
+ */
+export async function uploadAnimeCover(req, res) {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role || 'otaku';
+    const clientIp = getClientIp(req);
+    const animeId = parseInt(req.params.id, 10);
+
+    if (isNaN(animeId)) {
+      return res.status(400).json({ error: 'ID de anime inválido.' });
+    }
+
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: 'Nenhum arquivo enviado. Utilize o campo "cover" ou "foto".' });
+    }
+
+    const magicCheck = validateImageMagicBytes(req.file.buffer);
+    if (!magicCheck.valid) {
+      return res.status(400).json({ error: magicCheck.error || 'Formato de imagem inválido.' });
+    }
+
+    const timestamp = Date.now();
+    const objectKey = `covers/anime-${animeId}-${timestamp}.${magicCheck.ext}`;
+
+    try {
+      const exists = await minioClient.bucketExists(BUCKET_NAME);
+      if (!exists) {
+        await minioClient.makeBucket(BUCKET_NAME, 'us-east-1');
+      }
+    } catch (bErr) {
+      console.warn('[MinIO] Verificação de bucket:', bErr.message);
+    }
+
+    await minioClient.putObject(
+      BUCKET_NAME,
+      objectKey,
+      req.file.buffer,
+      req.file.buffer.length,
+      { 'Content-Type': magicCheck.mime }
+    );
+
+    const publicUrl = getPhotoPublicUrl(objectKey);
+
+    // Atualiza tabela animes se existir no banco local
+    await pool.query(
+      'UPDATE animes SET poster_url = ? WHERE id = ?',
+      [publicUrl, animeId]
+    );
+
+    logAuditEvent({
+      usuario_id: userId,
+      acao: 'upload_capa_anime',
+      ip: clientIp,
+      detalhes: {
+        anime_id: animeId,
+        chave_objeto: objectKey,
+        url: publicUrl
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: 'Capa do anime salva no MinIO com sucesso.',
+      poster_url: publicUrl,
+      objectKey
+    });
+  } catch (err) {
+    console.error('[Anime Cover Upload] Erro:', err);
+    return res.status(500).json({ error: 'Erro ao realizar upload da capa no MinIO.', details: err.message });
+  }
+}
+
+/**
+ * Detalha um registro específico de anime assistido pelo ID.
+ * Rota: GET /api/animes/assistidos/:id
+ */
+export async function getWatchedDetails(req, res) {
+  try {
+    const userId = req.user.id;
+    const targetId = parseInt(req.params.id, 10);
+
+    if (isNaN(targetId)) {
+      return res.status(400).json({ error: 'Identificador de registro inválido.' });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT * FROM animes_assistidos WHERE usuario_id = ? AND (id = ? OR anime_id = ?)',
+      [userId, targetId, targetId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Registro de anime assistido não encontrado.' });
+    }
+
+    return res.json({
+      success: true,
+      assistido: rows[0]
+    });
+  } catch (err) {
+    console.error('[Watched] Erro ao detalhar anime assistido:', err);
+    return res.status(500).json({ error: 'Erro ao buscar detalhes do anime assistido.' });
   }
 }
