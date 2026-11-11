@@ -961,7 +961,12 @@
                 <p class="pro-box-desc">Você tem acesso VIP liberado: GIFs no avatar e banner, até 6 animes fixados no perfil e exportação em backup JSON.</p>
               </div>
             </div>
-            <span class="user-premium-badge">⭐ PRO ATIVO</span>
+            <div class="pro-box-actions">
+              <span class="user-premium-badge">⭐ PRO ATIVO</span>
+              <button type="button" id="btn-cancel-subscription" class="btn btn-outline btn-sm btn-danger-outline" title="Cancelar sua assinatura Otaku Pro">
+                <span>❌ Cancelar Assinatura</span>
+              </button>
+            </div>
           </div>
 
           <div id="profile-alert" class="alert hidden"></div>
@@ -1049,6 +1054,9 @@
             </button>
             <button type="button" id="btn-instant-pro-activate" class="btn btn-outline btn-sm" style="border-color: #f59e0b; color: #f59e0b; width: 100%;" title="Ativar Otaku Pro para demonstração">
               ⚡ Ativar Otaku Pro Imediatamente (Modo Teste / Demonstração)
+            </button>
+            <button type="button" id="btn-cancel-subscription-modal" class="btn btn-outline btn-sm btn-danger-outline hidden" style="width: 100%;" title="Cancelar assinatura ativa">
+              ❌ Cancelar Minha Assinatura Ativa
             </button>
             <button type="button" id="btn-cancel-premium-modal" class="btn btn-ghost">
               Continuar no plano gratuito

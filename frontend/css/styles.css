@@ -2984,6 +2984,29 @@ button, input, select, textarea {
   box-shadow: 0 0 16px rgba(245, 158, 11, 0.12);
 }
 
+.pro-box-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.btn-danger-outline {
+  border: 1px solid #ef4444 !important;
+  color: #ef4444 !important;
+  background: transparent !important;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-danger-outline:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+  border-color: #f87171 !important;
+  transform: translateY(-1px);
+}
+
 /* Paginação Rápida no Topo (ao lado da barra de ordenação) */
 .catalog-top-pagination {
   display: inline-flex;

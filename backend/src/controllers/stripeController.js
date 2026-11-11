@@ -417,3 +417,66 @@ export async function verifyCheckoutSession(req, res) {
     return res.status(500).json({ error: `Erro ao verificar sessão do Stripe: ${err.message}` });
   }
 }
+
+/**
+ * Cancela a assinatura ativa do usuário no Stripe e rebaixa para o Plano Gratuito
+ * Rota: POST /api/stripe/cancel-subscription (autenticado)
+ */
+export async function cancelSubscription(req, res) {
+  try {
+    const userId = req.user.id;
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || req.ip;
+
+    const [rows] = await pool.query(
+      'SELECT id, nome, email, is_premium, stripe_customer_id, stripe_subscription_id FROM usuarios WHERE id = ?',
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+
+    const user = rows[0];
+    const subscriptionId = user.stripe_subscription_id;
+    const customerId = user.stripe_customer_id;
+
+    // 1. Se houver uma assinatura ativa no Stripe, executa o cancelamento na API do Stripe
+    if (stripe && subscriptionId && !subscriptionId.includes('simulada')) {
+      try {
+        console.log(`[Stripe] Cancelando assinatura ${subscriptionId} no Stripe para o usuário ${userId}...`);
+        await stripe.subscriptions.cancel(subscriptionId);
+      } catch (stripeErr) {
+        console.warn(`[Stripe] Aviso ao cancelar assinatura no Stripe (${subscriptionId}):`, stripeErr.message);
+      }
+    }
+
+    // 2. Atualiza o banco MariaDB: desativa is_premium e limpa stripe_subscription_id
+    await pool.query(
+      'UPDATE usuarios SET is_premium = FALSE, stripe_subscription_id = NULL WHERE id = ?',
+      [userId]
+    );
+
+    // 3. Emite evento de auditoria no log-service / Redis Streams
+    logAuditEvent({
+      usuario_id: userId,
+      acao: 'cancelamento_assinatura',
+      ip: clientIp,
+      detalhes: {
+        motivo: 'cancelado_pelo_usuario',
+        stripe_subscription_id: subscriptionId,
+        stripe_customer_id: customerId
+      }
+    });
+
+    console.log(`[Stripe] Assinatura do usuário ${userId} cancelada com sucesso.`);
+
+    return res.json({
+      success: true,
+      is_premium: false,
+      message: 'Sua assinatura Otaku Pro foi cancelada com sucesso. Seu plano retornou para a versão Gratuita.'
+    });
+  } catch (err) {
+    console.error('[Stripe] Erro ao cancelar assinatura:', err);
+    return res.status(500).json({ error: `Erro ao cancelar assinatura: ${err.message}` });
+  }
+}

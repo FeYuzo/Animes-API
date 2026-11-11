@@ -1,5 +1,11 @@
 import express from 'express';
-import { createCheckoutSession, handleWebhook, getSubscriptionStatus, verifyCheckoutSession } from '../controllers/stripeController.js';
+import {
+  createCheckoutSession,
+  handleWebhook,
+  getSubscriptionStatus,
+  verifyCheckoutSession,
+  cancelSubscription
+} from '../controllers/stripeController.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -15,5 +21,8 @@ router.post('/verify-session', authenticate, verifyCheckoutSession);
 
 // Status da assinatura (requer login)
 router.get('/status', authenticate, getSubscriptionStatus);
+
+// Cancelar assinatura (requer login)
+router.post('/cancel-subscription', authenticate, cancelSubscription);
 
 export default router;

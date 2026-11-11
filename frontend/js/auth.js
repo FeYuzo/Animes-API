@@ -129,6 +129,12 @@ async function handleLogout() {
 // 4. MODAL OTAKU PRO & CHECKOUT
 // ============================================================================
 export function openPremiumModal() {
+  const user = api.getUser();
+  const isPro = Boolean(user?.is_premium || user?.role === 'admin');
+  const btnCancelSubModal = document.getElementById('btn-cancel-subscription-modal');
+  if (btnCancelSubModal) {
+    btnCancelSubModal.classList.toggle('hidden', !isPro);
+  }
   premiumModal?.classList.remove('hidden');
 }
 

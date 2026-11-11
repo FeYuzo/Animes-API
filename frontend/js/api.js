@@ -374,5 +374,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ sessionId })
     });
+  },
+
+  async cancelSubscription() {
+    return this.request('/stripe/cancel-subscription', {
+      method: 'POST'
+    });
   }
 };

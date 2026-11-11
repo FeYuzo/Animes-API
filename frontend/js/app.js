@@ -1428,6 +1428,62 @@ async function handleToggleProPlan() {
 document.getElementById('btn-toggle-pro-mode')?.addEventListener('click', handleToggleProPlan);
 document.getElementById('btn-instant-pro-activate')?.addEventListener('click', handleToggleProPlan);
 
+// Cancelamento de Assinatura Otaku Pro
+async function handleCancelSubscription() {
+  const confirmed = window.confirm(
+    'Tem certeza de que deseja cancelar sua assinatura do Plano Otaku Pro?\n\n' +
+    'Ao cancelar, sua conta voltará para o Plano Gratuito (Free) e os recursos VIP serão desativados.'
+  );
+  if (!confirmed) return;
+
+  const btnProfile = document.getElementById('btn-cancel-subscription');
+  const btnModal = document.getElementById('btn-cancel-subscription-modal');
+  const origProfileHtml = btnProfile ? btnProfile.innerHTML : '';
+  const origModalHtml = btnModal ? btnModal.innerHTML : '';
+
+  if (btnProfile) {
+    btnProfile.disabled = true;
+    btnProfile.innerHTML = '<span class="spinner-sm"></span> Cancelando...';
+  }
+  if (btnModal) {
+    btnModal.disabled = true;
+    btnModal.innerHTML = '<span class="spinner-sm"></span> Cancelando...';
+  }
+
+  try {
+    const res = await api.cancelSubscription();
+    showToast(res.message || 'Assinatura cancelada com sucesso.', 'info');
+
+    if (currentUser) {
+      currentUser.is_premium = false;
+      api.setUser(currentUser);
+      updateNavPremiumUI(currentUser);
+    }
+
+    await refreshUserData();
+    reRenderCurrentView();
+
+    if (profileModal && !profileModal.classList.contains('hidden')) {
+      await openProfileModal();
+    }
+    closePremiumModal();
+  } catch (err) {
+    showToast(`Erro ao cancelar assinatura: ${err.message}`, 'error');
+  } finally {
+    if (btnProfile) {
+      btnProfile.disabled = false;
+      btnProfile.innerHTML = origProfileHtml || '<span>❌ Cancelar Assinatura</span>';
+    }
+    if (btnModal) {
+      btnModal.disabled = false;
+      btnModal.innerHTML = origModalHtml || '<span>❌ Cancelar Minha Assinatura Ativa</span>';
+    }
+  }
+}
+
+document.getElementById('btn-cancel-subscription')?.addEventListener('click', handleCancelSubscription);
+document.getElementById('btn-cancel-subscription-modal')?.addEventListener('click', handleCancelSubscription);
+
 btnToggleEditProfile?.addEventListener('click', () => {
   formEditProfile.classList.toggle('hidden');
   profileBioContainer.classList.toggle('hidden');
