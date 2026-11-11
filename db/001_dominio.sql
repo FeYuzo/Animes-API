@@ -135,7 +135,7 @@ VALUES
   (1, 'Admin AniTrack', 'admin@anitrack.com', '$2b$10$9LX8NRtit7sw3VwbnzjCCuFVbHYLgZm72jAbbRgQ776gkoFZFPdiW', 'admin', 'Administrador da plataforma e curador oficial do catálogo.', TRUE),
   (2, 'Crítico Renan', 'critico@anitrack.com', '$2b$10$9LX8NRtit7sw3VwbnzjCCuFVbHYLgZm72jAbbRgQ776gkoFZFPdiW', 'critico', 'Crítico especializado em animes sazonais e resenhas da comunidade.', TRUE),
   (3, 'Otaku João', 'otaku@anitrack.com', '$2b$10$9LX8NRtit7sw3VwbnzjCCuFVbHYLgZm72jAbbRgQ776gkoFZFPdiW', 'usuario', 'Fã assíduo de shonen e animes de fantasia.', FALSE)
-ON DUPLICATE KEY UPDATE nome = VALUES(nome), role = VALUES(role);
+ON DUPLICATE KEY UPDATE nome = VALUES(nome), role = VALUES(role), senha_hash = VALUES(senha_hash), is_premium = VALUES(is_premium);
 
 -- Inserção de Animes do Catálogo Local (Recurso Principal)
 INSERT INTO animes (id, titulo, titulo_romaji, sinopse, poster_url, banner_url, episodios, status, formato, temporada, ano, generos, score)

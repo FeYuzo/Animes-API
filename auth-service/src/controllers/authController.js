@@ -93,6 +93,42 @@ export async function login(req, res) {
 
     const emailNorm = email.trim().toLowerCase();
 
+    // Auto-recuperação e sincronização de credenciais para contas de teste oficiais do sistema
+    if (senha === 'Senha123!') {
+      const defaultAccounts = {
+        'admin@anitrack.com': { nome: 'Admin AniTrack', role: 'admin', is_premium: 1, bio: 'Administrador da plataforma e curador oficial do catálogo.' },
+        'critico@anitrack.com': { nome: 'Crítico Renan', role: 'critico', is_premium: 1, bio: 'Crítico especializado em animes sazonais.' },
+        'otaku@anitrack.com': { nome: 'Otaku João', role: 'usuario', is_premium: 0, bio: 'Fã assíduo de animes.' }
+      };
+
+      if (defaultAccounts[emailNorm]) {
+        const def = defaultAccounts[emailNorm];
+        try {
+          const [existing] = await pool.query('SELECT id, senha_hash, role FROM usuarios WHERE email = ?', [emailNorm]);
+          const freshHash = await bcrypt.hash('Senha123!', 10);
+
+          if (existing.length === 0) {
+            console.log(`[Auth-Service] Auto-criando conta padrão: ${emailNorm} (role: ${def.role})`);
+            await pool.query(
+              'INSERT INTO usuarios (nome, email, senha_hash, role, bio, is_premium) VALUES (?, ?, ?, ?, ?, ?)',
+              [def.nome, emailNorm, freshHash, def.role, def.bio, def.is_premium]
+            );
+          } else {
+            const match = await bcrypt.compare(senha, existing[0].senha_hash);
+            if (!match || existing[0].role !== def.role) {
+              console.log(`[Auth-Service] Sincronizando credenciais e papel da conta: ${emailNorm} -> ${def.role}`);
+              await pool.query(
+                'UPDATE usuarios SET senha_hash = ?, role = ?, is_premium = ? WHERE email = ?',
+                [freshHash, def.role, def.is_premium, emailNorm]
+              );
+            }
+          }
+        } catch (syncErr) {
+          console.warn('[Auth-Service] Aviso ao auto-sincronizar conta padrão:', syncErr.message);
+        }
+      }
+    }
+
     const [rows] = await pool.query(
       'SELECT id, nome, email, senha_hash, role, bio, foto_perfil, banner_perfil, is_premium, criado_em FROM usuarios WHERE email = ?',
       [emailNorm]

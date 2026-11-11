@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import mysql from 'mysql2/promise';
+import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,6 +47,12 @@ async function runSeed() {
 
     console.log('📜 Executando script SQL de migração e seeds (db/001_dominio.sql)...');
     await connection.query(sqlContent);
+
+    // Garante compatibilidade do hash Bcrypt para a senha Senha123!
+    const testHash = await bcrypt.hash('Senha123!', 10);
+    await connection.query("UPDATE usuarios SET senha_hash = ?, is_premium = TRUE, role = 'admin' WHERE email = 'admin@anitrack.com'", [testHash]);
+    await connection.query("UPDATE usuarios SET senha_hash = ?, is_premium = TRUE, role = 'critico' WHERE email = 'critico@anitrack.com'", [testHash]);
+    await connection.query("UPDATE usuarios SET senha_hash = ?, role = 'usuario' WHERE email = 'otaku@anitrack.com'", [testHash]);
 
     // Validação dos dados inseridos
     const [usuarios] = await connection.query('SELECT id, nome, email, role FROM usuarios');

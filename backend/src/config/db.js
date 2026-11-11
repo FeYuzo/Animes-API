@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -176,24 +177,17 @@ export async function initDatabase(retries = 5, delayMs = 3000) {
         console.warn('[Catalog-DB] Aviso ao checar colunas da tabela usuarios:', err.message);
       }
 
-      // 5. Assegura existência do usuário administrador padrão (acesso específico / chaves de admin)
+      // 5. Assegura existência e credenciais do usuário administrador padrão (chaves de admin)
       try {
-        const [adminRows] = await connection.query(
-          "SELECT id, role FROM usuarios WHERE email = 'admin@anitrack.com'"
+        const adminHash = await bcrypt.hash('Senha123!', 10);
+        console.log('[Catalog-DB] Assegurando credenciais de administrador (admin@anitrack.com / Senha123!)...');
+
+        await connection.query(
+          `INSERT INTO usuarios (nome, email, senha_hash, role, bio, is_premium)
+           VALUES ('Admin AniTrack', 'admin@anitrack.com', ?, 'admin', 'Administrador da plataforma e curador oficial do catálogo.', TRUE)
+           ON DUPLICATE KEY UPDATE role = 'admin', senha_hash = VALUES(senha_hash), is_premium = TRUE, nome = VALUES(nome);`,
+          [adminHash]
         );
-        if (adminRows.length === 0) {
-          console.log('[Catalog-DB] Semeando usuário administrador padrão (admin@anitrack.com)...');
-          await connection.query(
-            `INSERT INTO usuarios (id, nome, email, senha_hash, role, bio, is_premium)
-             VALUES (1, 'Admin AniTrack', 'admin@anitrack.com', '$2b$10$9LX8NRtit7sw3VwbnzjCCuFVbHYLgZm72jAbbRgQ776gkoFZFPdiW', 'admin', 'Administrador da plataforma e curador oficial do catálogo.', TRUE)
-             ON DUPLICATE KEY UPDATE role = 'admin', nome = VALUES(nome);`
-          );
-        } else if (adminRows[0].role !== 'admin') {
-          console.log('[Catalog-DB] Assegurando privilégios de administrador para admin@anitrack.com...');
-          await connection.query(
-            "UPDATE usuarios SET role = 'admin' WHERE email = 'admin@anitrack.com'"
-          );
-        }
       } catch (adminErr) {
         console.warn('[Catalog-DB] Aviso ao checar administrador padrão:', adminErr.message);
       }

@@ -10,6 +10,7 @@ COPY package*.json ./
 
 RUN npm install --omit=dev
 
+ARG CACHEBUST=20261021_auth_sync_v3
 COPY src/ ./src/
 
 ENV NODE_ENV=production
