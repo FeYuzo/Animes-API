@@ -176,6 +176,28 @@ export async function initDatabase(retries = 5, delayMs = 3000) {
         console.warn('[Catalog-DB] Aviso ao checar colunas da tabela usuarios:', err.message);
       }
 
+      // 5. Assegura existência do usuário administrador padrão (acesso específico / chaves de admin)
+      try {
+        const [adminRows] = await connection.query(
+          "SELECT id, role FROM usuarios WHERE email = 'admin@anitrack.com'"
+        );
+        if (adminRows.length === 0) {
+          console.log('[Catalog-DB] Semeando usuário administrador padrão (admin@anitrack.com)...');
+          await connection.query(
+            `INSERT INTO usuarios (id, nome, email, senha_hash, role, bio, is_premium)
+             VALUES (1, 'Admin AniTrack', 'admin@anitrack.com', '$2b$10$9LX8NRtit7sw3VwbnzjCCuFVbHYLgZm72jAbbRgQ776gkoFZFPdiW', 'admin', 'Administrador da plataforma e curador oficial do catálogo.', TRUE)
+             ON DUPLICATE KEY UPDATE role = 'admin', nome = VALUES(nome);`
+          );
+        } else if (adminRows[0].role !== 'admin') {
+          console.log('[Catalog-DB] Assegurando privilégios de administrador para admin@anitrack.com...');
+          await connection.query(
+            "UPDATE usuarios SET role = 'admin' WHERE email = 'admin@anitrack.com'"
+          );
+        }
+      } catch (adminErr) {
+        console.warn('[Catalog-DB] Aviso ao checar administrador padrão:', adminErr.message);
+      }
+
       connection.release();
       console.log('[Catalog-DB] Tabelas do AniTrack verificadas com sucesso.');
       return true;

@@ -12,7 +12,7 @@ import { logAuditEvent } from '../services/auditService.js';
  */
 export async function register(req, res) {
   try {
-    const { nome, email, senha, role } = req.body;
+    const { nome, email, senha } = req.body;
 
     if (!nome || !email || !senha) {
       return res.status(400).json({ error: 'Todos os campos são obrigatórios (nome, email, senha).' });
@@ -24,9 +24,11 @@ export async function register(req, res) {
 
     const emailNorm = email.trim().toLowerCase();
 
-    // Valida papel (role) do domínio AniTrack - aceita 'otaku', 'critico', 'admin' ou 'usuario'
-    const allowedRoles = ['otaku', 'critico', 'admin', 'usuario'];
-    const userRole = role && allowedRoles.includes(role.toLowerCase()) ? role.toLowerCase() : 'otaku';
+    // Regra Estrita de Segurança e RBAC:
+    // O cadastro público de novas contas sempre atribui o papel padrão 'usuario'.
+    // A criação de contas com privilégios de 'admin' é estritamente proibida no fluxo público de registro.
+    // Administradores só conseguem fazer acesso com as chaves de acesso específicas pré-configuradas (chaves de admin).
+    const userRole = 'usuario';
 
     // Verifica se o e-mail já existe
     const [existing] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [emailNorm]);

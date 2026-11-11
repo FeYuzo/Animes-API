@@ -5,6 +5,7 @@
 > **Repositório:** Animes-API (Evolução de Arquitetura em Microsserviços e SaaS em Nuvem)  
 > **🌐 URL do Sistema no Ar (Subdomínio da Disciplina):** [http://felipe-shida.siriani.com.br](http://felipe-shida.siriani.com.br) *(ou `http://35.226.64.52:8206`)*  
 > **🚢 Portainer (Gestão de Containers & Stacks):** [http://35.226.64.52:9000](http://35.226.64.52:9000)  
+> **🔑 Chaves de Acesso de Administrador:** `admin@anitrack.com` | Senha: `Senha123!` *(Veja Seção 9)*  
 > **🗄️ Script de Migração e Seed do Banco:** Versionado em [`db/001_dominio.sql`](./db/001_dominio.sql)  
 
 ---
@@ -417,6 +418,84 @@ npm run db:seed
 mysql -h 35.226.64.52 -P 3306 -u IAC_2026_02_felipe_shida -p IAC_2026_02_felipe_shida < db/001_dominio.sql
 ```
 *Ou abra o [`db/001_dominio.sql`](./db/001_dominio.sql) no DBeaver, phpMyAdmin ou console do Portainer e execute a query.*
+
+---
+
+## 9. 🔑 Chaves de Acesso de Administrador & Controle RBAC (Regras de Segurança)
+
+> [!IMPORTANT]
+> **Política Estrita de Segurança de Cadastro (RBAC):**
+> - **Remoção da Opção de Admin no Registro:** O formulário público de criação de conta (`/auth.html?tab=register` e rota `POST /api/auth/register`) **NÃO** disponibiliza nenhuma opção para o usuário escolher ser administrador.
+> - **Atribuição Automática de Papel:** Todo cadastro público recebe única e exclusivamente o papel padrão `usuario`. Mesmo se um cliente malicioso tentar injetar o campo `role: "admin"` no corpo da requisição HTTP, os controladores do backend e do microsserviço de autenticação realizam a higienização dos dados e forçam o papel `usuario`.
+> - **Acesso Restrito:** Usuários com privilégios de **administrador** acessam a plataforma **exclusivamente através das chaves de acesso pré-configuradas** especificadas abaixo.
+
+### 🛡️ Tabela Oficial de Chaves de Acesso e Credenciais de Teste
+
+| Papel (Role) | Nome de Exibição | E-mail de Acesso (Login) | Senha Padrão | Privilégios & Capacidades no Sistema |
+| :---: | :--- | :--- | :---: | :--- |
+| **`admin`** | **Admin AniTrack** | **`admin@anitrack.com`** | **`Senha123!`** | • **Acesso total irrestrito a todas as operações do SaaS**<br>• Moderação de comunidade: pode excluir comentários de **qualquer usuário** (`DELETE /api/comments/:id`)<br>• Curadoria do acervo: criar (`POST /api/animes`), editar (`PUT /api/animes/:id`) e excluir (`DELETE /api/animes/:id`) obras do catálogo<br>• Upload de pôsteres e capas via Object Storage MinIO (`POST /api/animes/:id/cover`)<br>• Visualização de e-mails dos autores em comentários para auditoria<br>• Todos os benefícios do Plano Otaku Pro ativados automaticamente |
+| **`critico`** | **Crítico Renan** | **`critico@anitrack.com`** | **`Senha123!`** | • Curadoria editorial: pode editar títulos e sinopses de animes no acervo (`PUT /api/animes/:id`)<br>• Publicação de resenhas em destaque comunitário<br>• Listas pessoais ilimitadas |
+| **`usuario`** | **Otaku João** | **`otaku@anitrack.com`** | **`Senha123!`** | • **Papel padrão de todas as novas contas criadas**<br>• Gestão completa das 3 listas (Assistidos com contagem de episódios, Fila Irá Ver e Favoritos)<br>• Fixação de até 2 animes no perfil (ou até 6 ao assinar o Otaku Pro)<br>• Publicação de comentários comunitários e exclusão restrita aos seus próprios comentários |
+
+---
+
+### 🏛️ Matriz de Permissões RBAC (Enforcement Centralizado — Padrão A)
+
+Todas as permissões são validadas de forma centralizada pelo microsserviço de autenticação através do endpoint `POST /api/auth/authorize`:
+
+| Permissão do Sistema | Finalidade da Ação | `usuario` (Padrão) | `critico` | `admin` (Chave Específica) | Código HTTP em Tentativa Negada |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| `animes:listar` | Consultar catálogo e simulcast | ✅ Permitido | ✅ Permitido | ✅ Permitido | - |
+| `favoritos:gerenciar_proprio` | Adicionar/remover favoritos | ✅ Permitido | ✅ Permitido | ✅ Permitido | - |
+| `listas:gerenciar_proprio` | Atualizar episódios e histórico | ✅ Permitido | ✅ Permitido | ✅ Permitido | - |
+| `comentarios:criar` | Publicar comentários por anime | ✅ Permitido | ✅ Permitido | ✅ Permitido | - |
+| `comentarios:excluir_proprio` | Apagar seu próprio comentário | ✅ Permitido | ✅ Permitido | ✅ Permitido | - |
+| `comentarios:excluir_qualquer` | **Moderação:** apagar comentário de terceiros | ❌ Negado | ❌ Negado | ✅ **Exclusivo Admin** | `HTTP 403 Forbidden` |
+| `animes:gerenciar` | Cadastrar e editar animes no catálogo | ❌ Negado | ✅ Permitido | ✅ **Exclusivo Admin** | `HTTP 403 Forbidden` |
+| `animes:excluir` | Excluir animes do acervo próprio | ❌ Negado | ❌ Negado | ✅ **Exclusivo Admin** | `HTTP 403 Forbidden` |
+| `logs:visualizar` | Consultar trilha de auditoria Redis Streams | ❌ Negado | ❌ Negado | ✅ **Exclusivo Admin** | `HTTP 403 Forbidden` |
+
+---
+
+### 🧪 Como Testar o Acesso de Administrador na Prática
+
+#### 1. Pela Interface Web (Navegador)
+1. Acesse a tela de autenticação:
+   - Em produção: [http://felipe-shida.siriani.com.br/auth.html](http://felipe-shida.siriani.com.br/auth.html)
+   - Em desenvolvimento local: [http://localhost:8206/auth.html](http://localhost:8206/auth.html)
+2. Na aba **Entrar**, utilize o atalho de preenchimento rápido das chaves de administrador ou digite manualmente:
+   - **E-mail:** `admin@anitrack.com`
+   - **Senha:** `Senha123!`
+3. Após clicar em **Entrar na Plataforma**:
+   - A barra de navegação exibirá a identificação `admin` com a badge `⭐ OTAKU PRO`.
+   - No topo do catálogo, o botão **`+ Cadastrar Anime`** estará liberado para inclusão de novas obras.
+   - Ao abrir o modal de qualquer anime, os botões administrativos **`✏️ Editar`** e **`🗑️ Excluir`** ficam visíveis e operacionais.
+   - Na lista de comentários comunitários, administradores visualizam o botão de lixeira **`🗑️`** em mensagens de todos os usuários para realizar moderação imediata.
+
+#### 2. Via Chamadas de API (cURL / REST)
+
+##### A. Login do Administrador para Obter Token JWT:
+```bash
+curl -X POST http://felipe-shida.siriani.com.br/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@anitrack.com", "senha": "Senha123!"}'
+```
+*Retorna o token JWT com payload contendo `role: "admin"`.*
+
+##### B. Teste de Exclusão Administrativa de Comentário (Moderação):
+```bash
+curl -X DELETE http://felipe-shida.siriani.com.br/api/comments/1 \
+  -H "Authorization: Bearer <TOKEN_JWT_ADMIN>"
+```
+*Retorna `HTTP 200 OK` (`Comentário removido com sucesso (ação de moderação administrativa)`).*  
+*Se a mesma requisição for disparada com token de um usuário comum (`otaku`), o sistema responde `HTTP 403 Forbidden` e registra o evento `permissao_negada` no Redis Streams.*
+
+##### C. Teste de Exclusão de Anime do Catálogo:
+```bash
+curl -X DELETE http://felipe-shida.siriani.com.br/api/animes/154587 \
+  -H "Authorization: Bearer <TOKEN_JWT_ADMIN>"
+```
+*Ação permitida apenas para o papel `admin` (403 para usuários comuns).*
 
 ---
 

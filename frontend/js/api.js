@@ -79,10 +79,10 @@ export const api = {
   },
 
   // ===== AUTH & MICROSSERVIÇO DE AUTENTICAÇÃO =====
-  async register(nome, email, senha, role = 'usuario') {
+  async register(nome, email, senha) {
     const data = await this.request('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ nome, email, senha, role })
+      body: JSON.stringify({ nome, email, senha })
     });
     if (data.token) {
       this.setToken(data.token);

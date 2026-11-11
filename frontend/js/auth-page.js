@@ -38,7 +38,6 @@ const btnForgotPassword = document.getElementById('btn-forgot-password');
 // Inputs de Registro
 const registerNome = document.getElementById('register-nome');
 const registerEmail = document.getElementById('register-email');
-const registerRole = document.getElementById('register-role');
 const registerSenha = document.getElementById('register-senha');
 const btnSubmitRegister = document.getElementById('btn-submit-register');
 
@@ -180,7 +179,6 @@ async function handleRegister(e) {
 
   const nome = registerNome.value.trim();
   const email = registerEmail.value.trim();
-  const role = registerRole.value || 'usuario';
   const senha = registerSenha.value;
 
   if (senha.length < 4) {
@@ -192,7 +190,7 @@ async function handleRegister(e) {
   btnSubmitRegister.innerHTML = '<span class="spinner-sm"></span> Criando conta...';
 
   try {
-    await api.register(nome, email, senha, role);
+    await api.register(nome, email, senha);
     showAlert('Conta criada com sucesso! Redirecionando...', 'success');
     setTimeout(() => {
       window.location.href = 'index.html';
@@ -271,6 +269,15 @@ tabRegister?.addEventListener('click', () => switchTab('register'));
 btnForgotPassword?.addEventListener('click', () => switchTab('forgot'));
 btnForgotBack?.addEventListener('click', () => switchTab('login'));
 btnResetBack?.addEventListener('click', () => switchTab('login'));
+
+// Botão de preenchimento rápido das chaves de administrador
+const btnFillAdmin = document.getElementById('btn-fill-admin');
+btnFillAdmin?.addEventListener('click', () => {
+  if (loginEmail) loginEmail.value = 'admin@anitrack.com';
+  if (loginSenha) loginSenha.value = 'Senha123!';
+  showAlert('Credenciais de Administrador preenchidas. Clique em "Entrar na Plataforma" para autenticar.', 'info');
+  loginSenha?.focus();
+});
 
 formLogin?.addEventListener('submit', handleLogin);
 formRegister?.addEventListener('submit', handleRegister);

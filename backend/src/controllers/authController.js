@@ -3,12 +3,15 @@ import { callAuthService } from '../services/authService.js';
 
 /**
  * Encaminha cadastro para o Auth-Service
+ * Regra de Segurança: Apenas nome, email e senha são aceitos no cadastro público.
+ * Qualquer papel ('role') enviado pelo cliente é descartado para impedir escalada de privilégios.
  * Rota: POST /api/auth/register
  */
 export async function register(req, res) {
+  const { nome, email, senha } = req.body;
   const result = await callAuthService('/api/auth/register', {
     method: 'POST',
-    body: JSON.stringify(req.body)
+    body: JSON.stringify({ nome, email, senha })
   });
 
   if (result.ok && result.data.token) {
