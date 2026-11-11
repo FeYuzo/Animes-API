@@ -15,7 +15,7 @@ COPY backend/package*.json ./backend/
 RUN npm --prefix backend install --omit=dev
 
 # Copia o código fonte do backend e frontend
-ARG CACHEBUST=20261021_admin_sync_v3
+ARG CACHEBUST=20261021_clean_ui_v4
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 

@@ -270,15 +270,6 @@ btnForgotPassword?.addEventListener('click', () => switchTab('forgot'));
 btnForgotBack?.addEventListener('click', () => switchTab('login'));
 btnResetBack?.addEventListener('click', () => switchTab('login'));
 
-// Botão de preenchimento rápido das chaves de administrador
-const btnFillAdmin = document.getElementById('btn-fill-admin');
-btnFillAdmin?.addEventListener('click', () => {
-  if (loginEmail) loginEmail.value = 'admin@anitrack.com';
-  if (loginSenha) loginSenha.value = 'Senha123!';
-  showAlert('Credenciais de Administrador preenchidas. Clique em "Entrar na Plataforma" para autenticar.', 'info');
-  loginSenha?.focus();
-});
-
 formLogin?.addEventListener('submit', handleLogin);
 formRegister?.addEventListener('submit', handleRegister);
 formForgot?.addEventListener('submit', handleForgot);
