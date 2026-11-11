@@ -4,7 +4,7 @@
  */
 
 import { api } from './api.js';
-import { initAuth, updateNavUserAvatar, updateNavPremiumUI, openPremiumModal } from './auth.js';
+import { initAuth, updateNavUserAvatar, updateNavPremiumUI, openPremiumModal, closePremiumModal } from './auth.js';
 
 // ============================================================================
 // ELEMENTOS DO DOM
